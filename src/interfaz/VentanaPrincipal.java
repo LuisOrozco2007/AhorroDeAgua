@@ -25,13 +25,14 @@ import negocio.GestorPuntosConsumo;
  */
 public class VentanaPrincipal extends JFrame {
 
-
+    // Gestores de la capa de negocio (se comparten entre todos los paneles)
     private GestorHogares gestorHogares;
     private GestorPuntosConsumo gestorPuntos;
     private GestorLecturas gestorLecturas;
     private GestorFugas gestorFugas;
     private GestorMetas gestorMetas;
 
+    // Selector de vivienda (barra superior) y paneles (una pestaña cada uno)
     private SelectorHogar selector;
     private PanelHogares panelHogares;
     private PanelPuntosConsumo panelPuntos;
@@ -40,6 +41,7 @@ public class VentanaPrincipal extends JFrame {
     private PanelPruebaFugas panelPruebas;
     private PanelMetasAhorro panelMetas;
 
+    /** Crea los gestores con datos de prueba, el selector, los paneles y las pestañas, y configura la ventana (900x650, centrada). */
     public VentanaPrincipal() {
         super("Asistente de Ahorro de Agua y Detección de Fugas");
 
@@ -51,6 +53,7 @@ public class VentanaPrincipal extends JFrame {
         gestorMetas = new GestorMetas();
         cargarDatosDePrueba(gestorHogares, gestorPuntos, gestorLecturas, gestorFugas, gestorMetas);
 
+        // Selector de vivienda compartido por todas las pestañas
         selector = new SelectorHogar(gestorHogares);
 
         // 2. Se crean los paneles
@@ -76,14 +79,17 @@ public class VentanaPrincipal extends JFrame {
             ((PanelBase) pestanas.getSelectedComponent()).actualizar();
         });
 
+        // Al elegir otra vivienda se actualiza la pestaña que está abierta
         selector.alCambiar(() -> ((PanelBase) pestanas.getSelectedComponent()).actualizar());
 
+        // Barra superior con la lista de viviendas (la misma para todas las pestañas)
         JPanel selectorPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 8));
         selectorPanel.setBackground(new Color(227, 242, 253));
         selectorPanel.add(new JLabel("Vivienda seleccionada:"));
         selector.getComponente().setPreferredSize(new Dimension(420, 28));
         selectorPanel.add(selector.getComponente());
 
+        // Selector de vivienda arriba y pestañas en el centro
         setLayout(new BorderLayout());
         add(selectorPanel, BorderLayout.NORTH);
         add(pestanas, BorderLayout.CENTER);
@@ -162,6 +168,7 @@ public class VentanaPrincipal extends JFrame {
         gMetas.crear(h3, "2026-11-01", "2026-11-30", "5");
     }
 
+    /** Punto de entrada del programa: abre la ventana principal dentro del hilo de Swing. */
     public static void main(String[] args) {
         // Para que los decimales se muestren con punto (igual que al escribirlos)
         Locale.setDefault(Locale.US);

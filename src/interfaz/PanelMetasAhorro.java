@@ -21,21 +21,30 @@ import modelo.MetaAhorro;
 import negocio.GestorHogares;
 import negocio.GestorMetas;
 
-
+/**
+ * Pestaña 5: metas de ahorro mensual. Permite establecer una meta (porcentaje de reducción) y compara
+ * el consumo real diario del hogar con el objetivo y con el ideal de la OMS (100 litros por persona al día).
+ */
 public class PanelMetasAhorro extends PanelBase {
 
+    // gestorHogares: para calcular el consumo ideal y el real
+    // selector: vivienda elegida en la parte superior de la ventana
+    // gestorMetas: lógica de negocio de las metas
     private GestorHogares gestorHogares;
     private SelectorHogar selector;
     private GestorMetas gestorMetas;
 
+    // Campos del formulario
     private JTextField txtInicio;
     private JTextField txtFin;
     private JTextField txtReduccion;
 
+    // Tabla de metas y etiqueta con el resumen del hogar
     private JTable tabla;
     private DefaultTableModel modeloTabla;
     private JLabel lblResumen;
 
+    /** Arma la pantalla y carga las metas del hogar seleccionado. */
     public PanelMetasAhorro(SelectorHogar selector, GestorHogares gestorHogares, GestorMetas gestorMetas) {
         this.selector = selector;
         this.gestorHogares = gestorHogares;
@@ -55,8 +64,9 @@ public class PanelMetasAhorro extends PanelBase {
         prepararNuevaMeta();
     }
 
+    // ---------- Construcción de la pantalla ----------
 
-
+    /** Crea el formulario de la meta (reducción %, fecha de inicio y fecha fin) con el botón "Establecer Meta". */
     private JPanel crearFormulario() {
         JPanel formulario = new JPanel(new BorderLayout(5, 5));
         formulario.setBorder(BorderFactory.createTitledBorder("Nueva meta de ahorro"));
@@ -85,6 +95,7 @@ public class PanelMetasAhorro extends PanelBase {
         return formulario;
     }
 
+    /** Crea la tabla de metas; la columna "Estado" se pinta de verde (cumplida), naranja (no cumplida) o rojo (excesivo). */
     private JScrollPane crearTabla() {
         String[] columnas = {"ID", "Inicio", "Fin", "Reducción (%)", "Ideal OMS (L/día)",
             "Objetivo meta (L/día)", "Consumo real (L/día)", "Estado"};
@@ -122,6 +133,7 @@ public class PanelMetasAhorro extends PanelBase {
 
     // ---------- Acciones ----------
 
+    /** Botón "Establecer Meta": crea la meta con los datos del formulario o muestra el error con JOptionPane. */
     private void establecerMeta() {
         Hogar hogar = selector.getHogar();
         if (hogar == null) {
@@ -141,6 +153,7 @@ public class PanelMetasAhorro extends PanelBase {
         }
     }
 
+    /** Deja el formulario listo para una meta nueva: inicio hoy, fin en 30 días y reducción vacía. */
     private void prepararNuevaMeta() {
         LocalDate hoy = LocalDate.now();
         txtInicio.setText(hoy.toString());
@@ -148,7 +161,7 @@ public class PanelMetasAhorro extends PanelBase {
         txtReduccion.setText("");
     }
 
-
+    // ---------- Métodos auxiliares ----------
     /** Llena la tabla con las metas del hogar y las evalúa con el consumo actual. */
     private void actualizarTabla() {
         modeloTabla.setRowCount(0);
@@ -182,6 +195,7 @@ public class PanelMetasAhorro extends PanelBase {
         }
     }
 
+    /** Se llama al cambiar de pestaña o de hogar: recarga la tabla de metas. */
     @Override
     public void actualizar() {
         actualizarTabla();

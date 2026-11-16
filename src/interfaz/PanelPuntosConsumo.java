@@ -24,9 +24,12 @@ import negocio.GestorPuntosConsumo;
  */
 public class PanelPuntosConsumo extends PanelBase {
 
+    // selector: vivienda elegida en la parte superior de la ventana
+    // gestorPuntos: lógica de negocio de los artefactos
     private SelectorHogar selector;
     private GestorPuntosConsumo gestorPuntos;
 
+    // Campos del formulario
     private JTextField txtUbicacion;
     private JComboBox<String> cmbArtefacto;
     private JTextField txtNombrePersonalizado;   // Solo se habilita con "Otros"
@@ -36,10 +39,12 @@ public class PanelPuntosConsumo extends PanelBase {
     private JTextField txtDuracion;              // Solo se habilita si el caudal es en L/min
     private JTextField txtFrecuencia;
 
+    // Tabla de artefactos y etiqueta con el total del hogar
     private JTable tabla;
     private DefaultTableModel modeloTabla;
     private JLabel lblTotal;
 
+    /** Arma la pantalla y carga los artefactos del hogar seleccionado. */
     public PanelPuntosConsumo(SelectorHogar selector, GestorPuntosConsumo gestorPuntos) {
         this.selector = selector;
         this.gestorPuntos = gestorPuntos;
@@ -59,6 +64,7 @@ public class PanelPuntosConsumo extends PanelBase {
 
     // ---------- Construcción de la pantalla ----------
 
+    /** Crea el formulario del artefacto (con la lista desplegable de tipos) y los botones Agregar y Eliminar. */
     private JPanel crearFormulario() {
         JPanel formulario = new JPanel(new BorderLayout(5, 5));
         formulario.setBorder(BorderFactory.createTitledBorder("Nuevo artefacto de consumo"));
@@ -72,6 +78,7 @@ public class PanelPuntosConsumo extends PanelBase {
         lblCaudal = new JLabel("Caudal (L/min):");
         lblDuracion = new JLabel("Duración media (min):");
 
+        // Campos del formulario en una cuadrícula de 3 filas x 4 columnas
         JPanel campos = new JPanel(new GridLayout(3, 4, 8, 8));
         campos.add(new JLabel("Nombre / Ubicación:"));
         campos.add(txtUbicacion);
@@ -106,6 +113,7 @@ public class PanelPuntosConsumo extends PanelBase {
         return formulario;
     }
 
+    /** Crea la tabla de artefactos con sus cálculos (volumen diario, consumo mensual e impacto). */
     private JScrollPane crearTabla() {
         String[] columnas = {"ID", "Nombre / Ubicación", "Artefacto", "Caudal", "Duración (min)",
             "Frecuencia/día", "Volumen Diario (L)", "Consumo Mensual (m³)", "Impacto (%)"};
@@ -159,6 +167,7 @@ public class PanelPuntosConsumo extends PanelBase {
         }
     }
 
+    /** Botón "Agregar Artefacto": el gestor valida los datos; si hay un error se muestra con JOptionPane. */
     private void agregarArtefacto() {
         Hogar hogar = selector.getHogar();
         if (hogar == null) {
@@ -180,6 +189,7 @@ public class PanelPuntosConsumo extends PanelBase {
         }
     }
 
+    /** Botón "Eliminar Artefacto": elimina el artefacto seleccionado en la tabla. */
     private void eliminarArtefacto() {
         Hogar hogar = selector.getHogar();
         if (hogar == null) {
@@ -228,11 +238,13 @@ public class PanelPuntosConsumo extends PanelBase {
                 + " L/día  |  " + String.format("%.3f", gestorPuntos.calcularTotalMensualM3(hogar)) + " m³/mes");
     }
 
+    /** Se llama al cambiar de pestaña o de hogar: recarga la tabla de artefactos. */
     @Override
     public void actualizar() {
         actualizarTabla();
     }
 
+    /** Muestra un mensaje de error de validación con JOptionPane. */
     private void mostrarError(String mensaje) {
         JOptionPane.showMessageDialog(this, mensaje, "Error de validación", JOptionPane.ERROR_MESSAGE);
     }

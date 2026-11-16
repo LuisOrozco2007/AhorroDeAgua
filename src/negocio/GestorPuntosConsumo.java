@@ -3,12 +3,18 @@ package negocio;
 import modelo.Hogar;
 import modelo.PuntoConsumo;
 
-
+/**
+ * RF3 y RF4: registra los artefactos de consumo de agua de cada hogar y
+ * calcula su consumo estimado (volumen diario, mensual y porcentaje de impacto).
+ */
 public class GestorPuntosConsumo {
 
+    // contadorId: da un número de ID único a cada elemento que se registra
+    // mensajeError: guarda el texto del último error de validación
     private int contadorId;
     private String mensajeError;
 
+    /** Crea el gestor con el contador de ID en 1 y sin mensaje de error. */
     public GestorPuntosConsumo() {
         contadorId = 1;
         mensajeError = "";
@@ -84,7 +90,7 @@ public class GestorPuntosConsumo {
             return error("El tiempo total de uso al día no puede superar 1440 minutos (24 horas).");
         }
 
-
+        // Si eligió "Otros", el artefacto se guarda con el nombre que escribió el usuario
         String tipo = esOtros ? nombrePersonalizado.trim() : artefacto;
 
         hogar.agregarPunto(new PuntoConsumo(contadorId, ubicacion.trim(), tipo,
@@ -93,7 +99,7 @@ public class GestorPuntosConsumo {
         return true;
     }
 
-
+    /** Da de baja un artefacto del hogar. */
     public boolean eliminar(Hogar hogar, int idPunto) {
         if (hogar == null) {
             return error("Debe seleccionar un hogar.");
@@ -107,9 +113,9 @@ public class GestorPuntosConsumo {
         return error("No se encontró el artefacto seleccionado.");
     }
 
+    // ---------- RF4: Cálculos de consumo estimado ----------
 
-
-
+    /** Suma del volumen diario (litros) de todos los artefactos del hogar. */
     public double calcularTotalDiarioLitros(Hogar hogar) {
         double total = 0;
         for (PuntoConsumo p : hogar.obtenerPuntos()) {
@@ -118,7 +124,7 @@ public class GestorPuntosConsumo {
         return total;
     }
 
-
+    /** Suma del consumo mensual (m3) de todos los artefactos del hogar. */
     public double calcularTotalMensualM3(Hogar hogar) {
         double total = 0;
         for (PuntoConsumo p : hogar.obtenerPuntos()) {
@@ -127,17 +133,19 @@ public class GestorPuntosConsumo {
         return total;
     }
 
-
+    /** Porcentaje que representa un artefacto frente al consumo total estimado del hogar. */
     public double calcularPorcentajeImpacto(Hogar hogar, PuntoConsumo punto) {
         return punto.calcularPorcentajeImpacto(calcularTotalMensualM3(hogar));
     }
 
+    // ---------- Manejo de errores ----------
 
-
+    /** Devuelve el mensaje del último error de validación (para mostrarlo con JOptionPane en la interfaz). */
     public String getMensajeError() {
         return mensajeError;
     }
 
+    /** Guarda el mensaje de error y devuelve false, así los métodos pueden escribir "return error(...)". */
     private boolean error(String mensaje) {
         mensajeError = mensaje;
         return false;

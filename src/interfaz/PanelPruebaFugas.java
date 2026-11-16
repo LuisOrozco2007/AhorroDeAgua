@@ -33,9 +33,12 @@ import negocio.GestorFugas;
  */
 public class PanelPruebaFugas extends PanelBase {
 
+    // selector: vivienda elegida en la parte superior de la ventana
+    // gestorFugas: lógica de negocio de las pruebas y alertas
     private SelectorHogar selector;
     private GestorFugas gestorFugas;
 
+    // Campos del formulario y tabla del historial de pruebas
     private JComboBox<LecturaMedidor> cmbInicial;
     private JComboBox<LecturaMedidor> cmbFinal;
     private JTextField txtLimite;
@@ -44,6 +47,7 @@ public class PanelPruebaFugas extends PanelBase {
     private JTable tabla;
     private DefaultTableModel modeloTabla;
 
+    // Zona de resultado: etiqueta de estado (cambia de color), recomendaciones y botones de la alerta
     private JLabel lblEstado;
     private JTextArea txtRecomendaciones;
     private JButton btnIniciarRevision;
@@ -56,6 +60,7 @@ public class PanelPruebaFugas extends PanelBase {
     private static final Color ROJO = new Color(200, 40, 40);
     private static final Color GRIS = new Color(120, 120, 120);
 
+    /** Arma la pantalla y carga las lecturas y pruebas del hogar seleccionado. */
     public PanelPruebaFugas(SelectorHogar selector, GestorFugas gestorFugas) {
         this.selector = selector;
         this.gestorFugas = gestorFugas;
@@ -72,6 +77,7 @@ public class PanelPruebaFugas extends PanelBase {
 
     // ---------- Construcción de la pantalla ----------
 
+    /** Crea el formulario: límite nocturno, lecturas inicial y final, confirmación de "sin uso" y el botón de ejecutar. */
     private JPanel crearFormulario() {
         JPanel formulario = new JPanel(new BorderLayout(5, 5));
         formulario.setBorder(BorderFactory.createTitledBorder("Prueba de fuga"));
@@ -81,6 +87,7 @@ public class PanelPruebaFugas extends PanelBase {
         txtLimite = new JTextField("5.0");
         chkSinUso = new JCheckBox("Confirmo que nadie usó agua entre ambas lecturas");
 
+        // Campos en una cuadrícula de 2 filas x 4 columnas
         JPanel campos = new JPanel(new GridLayout(2, 4, 8, 8));
         campos.add(new JLabel("Límite nocturno (L, máx. 5):"));
         campos.add(txtLimite);
@@ -111,6 +118,7 @@ public class PanelPruebaFugas extends PanelBase {
         return formulario;
     }
 
+    /** Crea la tabla con el historial de pruebas del hogar. */
     private JScrollPane crearTabla() {
         String[] columnas = {"ID", "Lectura inicial", "Lectura final", "Consumo (L)", "L/hora",
             "Límite (L)", "Resultado", "Estado alerta"};
@@ -132,6 +140,7 @@ public class PanelPruebaFugas extends PanelBase {
         return new JScrollPane(tabla);
     }
 
+    /** Crea la zona de resultado: etiqueta de estado (verde o roja), recomendaciones y botones de la alerta. */
     private JPanel crearPanelResultado() {
         JPanel panel = new JPanel(new BorderLayout(5, 5));
         panel.setBorder(BorderFactory.createTitledBorder("Resultado y alerta"));
@@ -171,6 +180,7 @@ public class PanelPruebaFugas extends PanelBase {
 
     // ---------- Acciones ----------
 
+    /** Botón "Ejecutar Prueba de Fuga": el gestor evalúa la prueba; si hay un error de validación se muestra con JOptionPane. */
     private void ejecutarPrueba() {
         Hogar hogar = selector.getHogar();
         if (hogar == null) {
@@ -195,6 +205,7 @@ public class PanelPruebaFugas extends PanelBase {
         }
     }
 
+    /** Botón "Iniciar Revisión": pasa la alerta de la prueba seleccionada a "En revisión" y pregunta dónde se sospecha la fuga. */
     private void iniciarRevision() {
         if (selector.getHogar() == null) {
             mostrarError("Debe seleccionar un hogar.");
@@ -218,6 +229,7 @@ public class PanelPruebaFugas extends PanelBase {
         }
     }
 
+    /** Botón "Cerrar Alerta": pide la acción realizada y cierra la alerta de la prueba seleccionada. */
     private void cerrarAlerta() {
         if (selector.getHogar() == null) {
             mostrarError("Debe seleccionar un hogar.");
@@ -243,6 +255,7 @@ public class PanelPruebaFugas extends PanelBase {
 
     // ---------- Métodos auxiliares ----------
 
+    /** Devuelve la prueba seleccionada en la tabla (null si no hay ninguna). */
     private PruebaFuga pruebaSeleccionada() {
         Hogar hogar = selector.getHogar();
         int fila = tabla.getSelectedRow();
@@ -356,12 +369,14 @@ public class PanelPruebaFugas extends PanelBase {
         }
     }
 
+    /** Se llama al cambiar de pestaña o de hogar: recarga las lecturas de las listas y la tabla de pruebas. */
     @Override
     public void actualizar() {
         cargarLecturas();
         actualizarTabla();
     }
 
+    /** Muestra un mensaje de error de validación con JOptionPane. */
     private void mostrarError(String mensaje) {
         JOptionPane.showMessageDialog(this, mensaje, "Error de validación", JOptionPane.ERROR_MESSAGE);
     }

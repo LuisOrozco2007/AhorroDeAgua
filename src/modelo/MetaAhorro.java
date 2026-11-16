@@ -2,15 +2,19 @@ package modelo;
 
 import java.time.LocalDate;
 
-
+/**
+ * Meta de ahorro de agua de un hogar. Se define con un porcentaje de reducción
+ * sobre el consumo ideal (referencia de la OMS: 100 L por persona al día).
+ */
 public class MetaAhorro {
 
-
+    // Posibles estados de la meta
     public static final String CUMPLIDA = "Meta cumplida";
     public static final String NO_CUMPLIDA = "Meta no cumplida";
     public static final String EXCESIVO = "Consumo excesivo";
     public static final String SIN_DATOS = "Sin datos";
 
+    // Atributos privados (encapsulamiento)
     private int id;
     private LocalDate inicio;
     private LocalDate fin;
@@ -20,6 +24,7 @@ public class MetaAhorro {
     private int habitantesPeriodoBase;     // Habitantes cuando se creó la meta
     private String estado;
 
+    /** Crea una meta. Empieza con el estado "Sin datos" hasta que se evalúe. */
     public MetaAhorro(int id, LocalDate inicio, LocalDate fin, double baseLPersonaDia,
                       double reduccionPorcentaje, int habitantesPeriodoBase) {
         this.id = id;
@@ -32,17 +37,23 @@ public class MetaAhorro {
         this.estado = SIN_DATOS;
     }
 
-
+    /** Consumo diario ideal del hogar = 100 L * habitantes que tenía cuando se creó la meta. */
     public double calcularIdeal() {
         return baseLPersonaDia * habitantesPeriodoBase;
     }
 
-
+    /** Consumo diario que se quiere lograr: el ideal menos el porcentaje de reducción. */
     public double calcularObjetivo() {
         return calcularIdeal() * (1 - reduccionPorcentaje / 100.0);
     }
 
-
+    /**
+     * Compara el consumo diario actual con el objetivo y guarda el estado:
+     *  - menor o igual al objetivo: "Meta cumplida"
+     *  - mayor al objetivo pero menor o igual al ideal: "Meta no cumplida"
+     *  - mayor al ideal: "Consumo excesivo"
+     *  - consumo negativo (-1 significa que no hay datos): "Sin datos"
+     */
     public String evaluar(double consumoActual) {
         if (consumoActual < 0) {
             estado = SIN_DATOS;
@@ -56,12 +67,12 @@ public class MetaAhorro {
         return estado;
     }
 
+    /** Cambia el texto descriptivo de la meta. */
     public void actualizarDescripcion(String texto) {
         this.descripcion = texto;
     }
 
-
-
+    // ---------- Getters y setters ----------
     public int getId() {
         return id;
     }

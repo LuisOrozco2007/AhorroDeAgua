@@ -5,22 +5,35 @@ import modelo.Hogar;
 import modelo.LecturaMedidor;
 import modelo.PruebaFuga;
 
-
+/**
+ * RF7: evalúa las pruebas de fuga con el criterio de consumo nocturno:
+ * de 00:00 a 05:00 un hogar sin problemas consume casi 0 litros (tolerancia de 5 L
+ * por el medidor). Si lo supera, el estado pasa a "Posible fuga" y se crea una
+ * AlertaFuga con recomendaciones automáticas.
+ */
 public class GestorFugas {
 
+    // contadorPruebas y contadorAlertas: dan un ID único a cada prueba y a cada alerta nueva
+    // mensajeError: guarda el texto del último error de validación
     private int contadorPruebas;
     private int contadorAlertas;
     private String mensajeError;
 
+    /** Crea el gestor con los contadores de ID en 1 y sin mensaje de error. */
     public GestorFugas() {
         contadorPruebas = 1;
         contadorAlertas = 1;
         mensajeError = "";
     }
 
-
+    /**
+     * Ejecuta una prueba de fuga con dos lecturas del mismo hogar.
+     * Devuelve la prueba ya evaluada, o null si hubo un error de validación
+     * (el mensaje se obtiene con getMensajeError()).
+     */
     public PruebaFuga ejecutarPrueba(Hogar hogar, LecturaMedidor inicial, LecturaMedidor fin,
                                      String limiteTxt, boolean sinUsoConfirmado) {
+        // Validaciones de los datos recibidos
         if (hogar == null) {
             error("Debe seleccionar un hogar.");
             return null;
@@ -43,6 +56,7 @@ public class GestorFugas {
             return null;
         }
 
+        // Conversión y validación del límite ingresado
         double limite;
         try {
             limite = Double.parseDouble(limiteTxt.trim().replace(',', '.'));
@@ -64,6 +78,7 @@ public class GestorFugas {
             return null;
         }
 
+        // Se crea la prueba y se revisa que cumpla el criterio nocturno
         PruebaFuga prueba = new PruebaFuga(contadorPruebas, inicial, fin, sinUsoConfirmado, limite);
         if (!prueba.finalEnMadrugada()) {
             error("La lectura final debe ser de la madrugada (entre 00:00 y "
@@ -78,7 +93,7 @@ public class GestorFugas {
         contadorPruebas++;
         prueba.evaluar();
 
-
+        // Si supera el límite, el estado es "Posible fuga" y se genera la alerta con recomendaciones
         if (prueba.getResultado().equals(PruebaFuga.POSIBLE_FUGA)) {
             AlertaFuga alerta = new AlertaFuga(contadorAlertas);
             contadorAlertas++;
@@ -96,7 +111,7 @@ public class GestorFugas {
         return prueba;
     }
 
-
+    /** Texto con las recomendaciones automáticas cuando hay posible fuga (grifos, tuberías, inodoros, mangueras). */
     public String generarRecomendaciones() {
         return "En la madrugada nadie usa agua, por lo que el medidor no debería avanzar.\n"
                 + "1. Revise que todos los grifos (cocina, baños, patio) estén bien cerrados.\n"
@@ -107,7 +122,7 @@ public class GestorFugas {
                 + "5. Si el medidor sigue avanzando con todo cerrado, llame a un plomero.";
     }
 
-
+    /** Pasa la alerta de "Pendiente" a "En revisión" y guarda, si se indicó, el lugar sospechoso. */
     public boolean iniciarRevision(AlertaFuga alerta, String ubicacion) {
         if (alerta == null) {
             return error("Seleccione una prueba que tenga una alerta.");
@@ -122,7 +137,7 @@ public class GestorFugas {
         return true;
     }
 
-
+    /** Cierra la alerta guardando la acción realizada (la acción es obligatoria). */
     public boolean cerrarAlerta(AlertaFuga alerta, String accion) {
         if (alerta == null) {
             return error("Seleccione una prueba que tenga una alerta.");
@@ -138,12 +153,14 @@ public class GestorFugas {
         return true;
     }
 
+    // ---------- Manejo de errores ----------
 
-
+    /** Devuelve el mensaje del último error de validación (para mostrarlo con JOptionPane en la interfaz). */
     public String getMensajeError() {
         return mensajeError;
     }
 
+    /** Guarda el mensaje de error y devuelve false, así los métodos pueden escribir "return error(...)". */
     private boolean error(String mensaje) {
         mensajeError = mensaje;
         return false;

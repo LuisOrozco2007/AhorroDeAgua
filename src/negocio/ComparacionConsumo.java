@@ -5,12 +5,21 @@ import java.util.Locale;
 import java.util.OptionalDouble;
 import modelo.Hogar;
 
+/**
+ * Resultado de comparar el consumo real de un hogar con su consumo ideal en un periodo.
+ * Es un objeto de solo lectura (todos sus atributos son final): lo crea
+ * GestorHogares.comparar() y la interfaz solo lo muestra.
+ */
 public final class ComparacionConsumo {
 
+    // Posibles dictámenes del estado del consumo
     public static final String EFICIENTE = "Consumo eficiente";
     public static final String EXCESIVO = "Consumo excesivo";
     public static final String SIN_DATOS = "Datos insuficientes";
 
+    // Datos del hogar y del periodo que se comparó
+    // (desde y hasta pueden ser null = sin límite; ideal y real están en litros por día;
+    //  real queda vacío si no hay al menos 2 lecturas en el periodo)
     private final String responsable;
     private final int habitantes;
     private final String codigoMedidor;
@@ -21,6 +30,7 @@ public final class ComparacionConsumo {
     private final double ideal;
     private final OptionalDouble real;
 
+    /** Constructor de paquete: solo las clases de "negocio" pueden crear una comparación. */
     ComparacionConsumo(Hogar hogar, LocalDate desde, LocalDate hasta,
                        int lecturasUsadas, double dias,
                        double ideal, OptionalDouble real) {
@@ -35,22 +45,27 @@ public final class ComparacionConsumo {
         this.real = real;
     }
 
+    /** Consumo ideal diario en litros (100 L por persona). */
     public double getIdeal() {
         return ideal;
     }
 
+    /** Consumo real promedio en litros por día (vacío si no hay datos suficientes). */
     public OptionalDouble getReal() {
         return real;
     }
 
+    /** Cantidad de lecturas del periodo que se usaron en el cálculo. */
     public int getLecturasUsadas() {
         return lecturasUsadas;
     }
 
+    /** Diferencia real - ideal en L/día (positiva = se gasta de más). Es 0 si no hay datos. */
     public double getDiferencia() {
         return real.isPresent() ? real.getAsDouble() - ideal : 0;
     }
 
+    /** Dictamen: "Consumo eficiente" si el real es menor o igual al ideal, "Consumo excesivo" si no, o "Datos insuficientes". */
     public String getEstado() {
         if (!real.isPresent()) {
             return SIN_DATOS;
@@ -58,7 +73,9 @@ public final class ComparacionConsumo {
         return real.getAsDouble() <= ideal ? EFICIENTE : EXCESIVO;
     }
 
+    /** Arma un texto de varias líneas con el detalle de la comparación para mostrarlo en pantalla. */
     public String resumen() {
+        // Texto que describe el periodo según qué fechas se indicaron
         String periodo;
         if (desde == null && hasta == null) {
             periodo = "todo el historial";

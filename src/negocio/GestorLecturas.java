@@ -10,19 +10,30 @@ import modelo.Hogar;
 import modelo.LecturaMedidor;
 import modelo.PruebaFuga;
 
-
+/**
+ * RF5 y RF6: registra, consulta, actualiza y elimina las lecturas del medidor.
+ * Regla clave: una lectura nunca puede ser menor que la anterior (el medidor siempre acumula).
+ */
 public class GestorLecturas {
 
+    // contadorId: da un número de ID único a cada elemento que se registra
+    // mensajeError: guarda el texto del último error de validación
     private int contadorId;
     private String mensajeError;
 
+    /** Crea el gestor con el contador de ID en 1 y sin mensaje de error. */
     public GestorLecturas() {
         contadorId = 1;
         mensajeError = "";
     }
 
+    // ---------- RF5: Registrar lectura ----------
 
-
+    /**
+     * Registra una lectura nueva. Valida que no haya campos vacíos, el formato de la fecha (AAAA-MM-DD)
+     * y de la hora (HH:MM), que el valor sea un número no negativo y que no sea menor a la lectura anterior.
+     * Devuelve false (y guarda el mensaje de error) si algo falla.
+     */
     public boolean registrar(Hogar hogar, String fechaTxt, String horaTxt, String valorTxt) {
         if (hogar == null) {
             return error("Debe seleccionar un hogar.");
@@ -50,7 +61,9 @@ public class GestorLecturas {
         return true;
     }
 
+    // ---------- RF6: Consultar, actualizar y eliminar ----------
 
+    /** Devuelve las lecturas del hogar dentro del rango de fechas (null = sin límite). */
     public ArrayList<LecturaMedidor> consultar(Hogar hogar, LocalDate desde, LocalDate hasta) {
         ArrayList<LecturaMedidor> resultado = new ArrayList<>();
         for (LecturaMedidor l : hogar.obtenerLecturas()) {
@@ -63,7 +76,7 @@ public class GestorLecturas {
         return resultado;
     }
 
-
+    /** Modifica una lectura ya registrada. No se puede si la lectura se usa en una prueba de fuga. */
     public boolean actualizar(Hogar hogar, int idLectura, String fechaTxt, String horaTxt, String valorTxt) {
         LecturaMedidor lectura = buscarPorId(hogar, idLectura);
         if (lectura == null) {
@@ -95,6 +108,7 @@ public class GestorLecturas {
         return true;
     }
 
+    /** Elimina una lectura. No se puede si la lectura se usa en una prueba de fuga. */
     public boolean eliminar(Hogar hogar, int idLectura) {
         LecturaMedidor lectura = buscarPorId(hogar, idLectura);
         if (lectura == null) {
@@ -108,7 +122,7 @@ public class GestorLecturas {
         return true;
     }
 
-
+    /** Litros consumidos desde la lectura anterior. Devuelve -1 si es la primera lectura. */
     public double consumoPeriodoLitros(Hogar hogar, LecturaMedidor lectura) {
         ArrayList<LecturaMedidor> lista = hogar.obtenerLecturas();
         int posicion = lista.indexOf(lectura);
@@ -118,7 +132,7 @@ public class GestorLecturas {
         return lista.get(posicion - 1).litrosHasta(lectura);
     }
 
-
+    /** Actualiza la observación de cada lectura ("Lectura inicial" o "Consumo de X L") después de un cambio. */
     public void recalcularObservaciones(Hogar hogar) {
         ArrayList<LecturaMedidor> lista = hogar.obtenerLecturas();
         for (int i = 0; i < lista.size(); i++) {
@@ -131,8 +145,9 @@ public class GestorLecturas {
         }
     }
 
+    // ---------- Métodos auxiliares ----------
 
-
+    /** Busca una lectura por su ID dentro del hogar. Devuelve null si no existe. */
     private LecturaMedidor buscarPorId(Hogar hogar, int id) {
         if (hogar == null) {
             return null;
@@ -145,6 +160,7 @@ public class GestorLecturas {
         return null;
     }
 
+    /** Indica si la lectura es la inicial o la final de alguna prueba de fuga del hogar. */
     private boolean estaUsadaEnPrueba(Hogar hogar, LecturaMedidor lectura) {
         for (PruebaFuga p : hogar.obtenerPruebas()) {
             if (p.getLecturaInicial() == lectura || p.getLecturaFinal() == lectura) {
@@ -154,7 +170,7 @@ public class GestorLecturas {
         return false;
     }
 
-
+    /** Convierte fecha (AAAA-MM-DD) y hora (HH:MM). Devuelve null (y guarda el error) si el formato es incorrecto. */
     private LocalDateTime convertirFechaHora(String fechaTxt, String horaTxt) {
         LocalDate fecha;
         LocalTime hora;
@@ -173,7 +189,7 @@ public class GestorLecturas {
         return LocalDateTime.of(fecha, hora);
     }
 
-
+    /** Convierte el valor del medidor. Devuelve -1 (y guarda el error) si no es válido. */
     private double convertirValor(String valorTxt) {
         double valor;
         try {
@@ -193,7 +209,11 @@ public class GestorLecturas {
         return valor;
     }
 
-
+    /**
+     * Regla principal: la lectura no puede ser menor que una lectura anterior ni mayor que una
+     * lectura posterior (el medidor siempre acumula), y no puede repetir la fecha y hora de otra.
+     * "idIgnorar" es el ID de la lectura que se está modificando (-1 si es una lectura nueva).
+     */
     private boolean validarOrden(Hogar hogar, LocalDateTime fechaHora, double valor, int idIgnorar) {
         DateTimeFormatter formato = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
         for (LecturaMedidor l : hogar.obtenerLecturas()) {
@@ -215,12 +235,14 @@ public class GestorLecturas {
         return true;
     }
 
+    // ---------- Manejo de errores ----------
 
-
+    /** Devuelve el mensaje del último error de validación (para mostrarlo con JOptionPane en la interfaz). */
     public String getMensajeError() {
         return mensajeError;
     }
 
+    /** Guarda el mensaje de error y devuelve false, así los métodos pueden escribir "return error(...)". */
     private boolean error(String mensaje) {
         mensajeError = mensaje;
         return false;

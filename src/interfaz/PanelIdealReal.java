@@ -16,14 +16,23 @@ import modelo.Hogar;
 import negocio.ComparacionConsumo;
 import negocio.GestorHogares;
 
+/**
+ * Pestaña "Ideal vs real": compara el consumo real diario de la vivienda seleccionada con el
+ * consumo ideal de la OMS (100 L por persona al día) en el periodo que elija el usuario.
+ * El cálculo lo hace GestorHogares.comparar(); aquí solo se piden las fechas y se muestra el resultado.
+ */
 public class PanelIdealReal extends PanelBase {
 
+    // gestorHogares: para hacer la comparación
+    // selector: vivienda elegida en la parte superior de la ventana
+    // txtDesde y txtHasta: fechas del periodo | areaResumen: cuadro donde se muestra el resultado
     private final GestorHogares gestorHogares;
     private final SelectorHogar selector;
     private final JTextField txtDesde;
     private final JTextField txtHasta;
     private final JTextArea areaResumen;
 
+    /** Arma la pantalla: campos de fecha, botón "Comparar" y el cuadro del resultado. */
     public PanelIdealReal(GestorHogares gestorHogares, SelectorHogar selector) {
         this.gestorHogares = gestorHogares;
         this.selector = selector;
@@ -31,6 +40,7 @@ public class PanelIdealReal extends PanelBase {
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
+        // Parte superior: fechas del periodo (por defecto, los últimos 7 días) y botón de comparar
         JPanel controles = new JPanel(new FlowLayout(FlowLayout.LEFT));
         txtDesde = new JTextField(LocalDate.now().minusDays(7).toString(), 10);
         txtHasta = new JTextField(LocalDate.now().toString(), 10);
@@ -42,6 +52,7 @@ public class PanelIdealReal extends PanelBase {
         controles.add(btnComparar);
         btnComparar.addActionListener(e -> calcular());
 
+        // Parte central: cuadro de texto de solo lectura con letra monoespaciada
         areaResumen = new JTextArea();
         areaResumen.setEditable(false);
         areaResumen.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
@@ -50,6 +61,10 @@ public class PanelIdealReal extends PanelBase {
         add(new JScrollPane(areaResumen), BorderLayout.CENTER);
     }
 
+    /**
+     * Lee las fechas, pide la comparación al gestor y muestra el resumen.
+     * Si hay un error (sin hogar, fecha inválida, etc.) muestra el mensaje en el mismo cuadro de texto.
+     */
     private void calcular() {
         Hogar hogar = selector.getHogar();
         if (hogar == null) {
@@ -75,6 +90,7 @@ public class PanelIdealReal extends PanelBase {
         areaResumen.setText(comparacion.resumen());
     }
 
+    /** Se llama al cambiar de pestaña o de vivienda: vuelve a calcular la comparación. */
     @Override
     public void actualizar() {
         calcular();

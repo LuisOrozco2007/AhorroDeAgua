@@ -23,30 +23,42 @@ import modelo.Hogar;
 import modelo.LecturaMedidor;
 import negocio.GestorLecturas;
 
-
+/**
+ * Pestaña 3: registro de lecturas del medidor (RF5) y su consulta, modificación y eliminación (RF6).
+ * Los errores (campos vacíos, valores negativos o una lectura menor a la anterior) se muestran con JOptionPane.
+ */
 public class PanelLecturas extends PanelBase {
 
+    // selector: vivienda elegida en la parte superior de la ventana
+    // gestorLecturas: lógica de negocio de las lecturas
     private SelectorHogar selector;
     private GestorLecturas gestorLecturas;
 
+    // Campos del formulario y del filtro por fechas
     private JTextField txtFecha;
     private JTextField txtHora;
     private JTextField txtValor;
     private JTextField txtDesde;
     private JTextField txtHasta;
 
+    // Tabla del historial de lecturas
     private JTable tabla;
     private DefaultTableModel modeloTabla;
 
-
+    // Estado de la tabla:
+    // mostradas: lecturas que se ven en la tabla (misma posición que las filas)
+    // filtroDesde y filtroHasta: filtro de fechas activo (null = sin filtro)
+    // hogarMostradoId: ID del último hogar mostrado (para limpiar el formulario al cambiar de hogar)
     private ArrayList<LecturaMedidor> mostradas = new ArrayList<>();
     private LocalDate filtroDesde = null;
     private LocalDate filtroHasta = null;
     private Integer hogarMostradoId;
 
+    // Formatos para mostrar la fecha y la hora
     private DateTimeFormatter formatoFechaHora = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private DateTimeFormatter formatoHora = DateTimeFormatter.ofPattern("HH:mm");
 
+    /** Arma la pantalla y carga el historial del hogar seleccionado. */
     public PanelLecturas(SelectorHogar selector, GestorLecturas gestorLecturas) {
         this.selector = selector;
         this.gestorLecturas = gestorLecturas;
@@ -61,8 +73,9 @@ public class PanelLecturas extends PanelBase {
         limpiarCampos();
     }
 
+    // ---------- Construcción de la pantalla ----------
 
-
+    /** Crea el formulario (fecha, hora y valor) con los botones Registrar, Modificar y Eliminar. */
     private JPanel crearFormulario() {
         JPanel formulario = new JPanel(new BorderLayout(5, 5));
         formulario.setBorder(BorderFactory.createTitledBorder("Lectura del medidor"));
@@ -98,10 +111,11 @@ public class PanelLecturas extends PanelBase {
         return formulario;
     }
 
+    /** Crea la zona central: filtro de fechas para consultar el historial y la tabla de lecturas. */
     private JPanel crearZonaTabla() {
         JPanel zona = new JPanel(new BorderLayout(5, 5));
 
-
+        // Barra para consultar el historial por rango de fechas (RF6)
         txtDesde = new JTextField(10);
         txtHasta = new JTextField(10);
         JButton btnFiltrar = new JButton("Filtrar");
@@ -135,7 +149,7 @@ public class PanelLecturas extends PanelBase {
         tabla = new JTable(modeloTabla);
         tabla.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-
+        // Al seleccionar una fila, se copian sus datos al formulario para poder modificarla
         tabla.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 copiarFilaAlFormulario();
@@ -147,7 +161,9 @@ public class PanelLecturas extends PanelBase {
         return zona;
     }
 
+    // ---------- Acciones ----------
 
+    /** Botón "Registrar Lectura": el gestor valida los datos; si hay un error se muestra con JOptionPane. */
     private void registrarLectura() {
         Hogar hogar = selector.getHogar();
         if (hogar == null) {
@@ -165,6 +181,7 @@ public class PanelLecturas extends PanelBase {
         }
     }
 
+    /** Botón "Modificar": cambia la lectura seleccionada en la tabla con los datos del formulario. */
     private void modificarLectura() {
         Hogar hogar = selector.getHogar();
         if (hogar == null) {
@@ -189,6 +206,7 @@ public class PanelLecturas extends PanelBase {
         }
     }
 
+    /** Botón "Eliminar": elimina la lectura seleccionada, después de pedir confirmación. */
     private void eliminarLectura() {
         Hogar hogar = selector.getHogar();
         if (hogar == null) {
@@ -214,6 +232,7 @@ public class PanelLecturas extends PanelBase {
         }
     }
 
+    /** Botón "Filtrar": valida las fechas "Desde" y "Hasta" y muestra solo las lecturas de ese periodo. */
     private void filtrar() {
         LocalDate desde = null;
         LocalDate hasta = null;
@@ -237,7 +256,9 @@ public class PanelLecturas extends PanelBase {
         actualizarTabla();
     }
 
+    // ---------- Métodos auxiliares ----------
 
+    /** Copia la fecha, la hora y el valor de la fila seleccionada al formulario. */
     private void copiarFilaAlFormulario() {
         int fila = tabla.getSelectedRow();
         if (fila < 0 || fila >= mostradas.size()) {
@@ -249,6 +270,7 @@ public class PanelLecturas extends PanelBase {
         txtValor.setText(String.valueOf(l.getAcumuladoM3()));
     }
 
+    /** Prepara el formulario para una lectura nueva: fecha y hora actuales y valor vacío. */
     private void limpiarCampos() {
         txtFecha.setText(LocalDate.now().toString());
         txtHora.setText(LocalTime.now().format(formatoHora));
@@ -256,7 +278,7 @@ public class PanelLecturas extends PanelBase {
         tabla.clearSelection();
     }
 
-
+    /** Llena la tabla con el historial del hogar seleccionado (aplicando el filtro de fechas si hay uno). */
     private void actualizarTabla() {
         modeloTabla.setRowCount(0);
         mostradas.clear();
@@ -277,6 +299,7 @@ public class PanelLecturas extends PanelBase {
         }
     }
 
+    /** Se llama al cambiar de pestaña o de hogar: si cambió el hogar limpia el formulario y luego recarga la tabla. */
     @Override
     public void actualizar() {
         Hogar hogar = selector.getHogar();
@@ -288,6 +311,7 @@ public class PanelLecturas extends PanelBase {
         actualizarTabla();
     }
 
+    /** Muestra un mensaje de error de validación con JOptionPane. */
     private void mostrarError(String mensaje) {
         JOptionPane.showMessageDialog(this, mensaje, "Error de validación", JOptionPane.ERROR_MESSAGE);
     }

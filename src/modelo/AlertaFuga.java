@@ -2,7 +2,12 @@ package modelo;
 
 import java.time.LocalDateTime;
 
-
+/**
+ * Alerta que se genera cuando una prueba de fuga detecta un consumo nocturno
+ * mayor al límite permitido. Tiene un estado que va cambiando:
+ * Pendiente → En revisión → Cerrada.
+ * También guarda las recomendaciones, el lugar sospechoso y la acción realizada.
+ */
 public class AlertaFuga {
 
     // Posibles estados de la alerta
@@ -10,6 +15,10 @@ public class AlertaFuga {
     public static final String EN_REVISION = "En revisión";
     public static final String CERRADA = "Cerrada";
 
+    // Atributos privados (encapsulamiento)
+    // estado: "Pendiente", "En revisión" o "Cerrada"
+    // ubicacionSospechada, accionRealizada y recomendaciones: textos que se llenan durante la revisión
+    // fechaCreacion y fechaCierre: cuándo se creó y cuándo se cerró la alerta
     private int id;
     private String estado;
     private String observacion;
@@ -19,6 +28,7 @@ public class AlertaFuga {
     private String accionRealizada;
     private String recomendaciones;
 
+    /** Crea una alerta nueva: empieza en estado "Pendiente" y guarda la fecha y hora actuales. */
     public AlertaFuga(int id) {
         this.id = id;
         this.estado = PENDIENTE;
@@ -29,30 +39,31 @@ public class AlertaFuga {
         this.recomendaciones = "";
     }
 
-
+    /** Pasa la alerta de "Pendiente" a "En revisión". Si está en otro estado, no hace nada. */
     public void iniciarRevision() {
         if (estado.equals(PENDIENTE)) {
             estado = EN_REVISION;
         }
     }
 
+    /** Guarda el lugar donde se sospecha que está la fuga (por ejemplo "baño principal"). */
     public void registrarUbicacion(String lugar) {
         this.ubicacionSospechada = lugar;
     }
 
+    /** Guarda la acción que se realizó para resolver la fuga. */
     public void registrarAccion(String accion) {
         this.accionRealizada = accion;
     }
 
-
+    /** Cierra la alerta: guarda la nota final, cambia el estado a "Cerrada" y registra la fecha de cierre. */
     public void cerrar(String nota) {
         this.observacion = nota;
         this.estado = CERRADA;
         this.fechaCierre = LocalDateTime.now();
     }
 
-
-
+    // ---------- Getters y setters ----------
     public int getId() {
         return id;
     }

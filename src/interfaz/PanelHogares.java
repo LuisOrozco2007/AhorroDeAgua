@@ -16,22 +16,30 @@ import javax.swing.table.DefaultTableModel;
 import modelo.Hogar;
 import negocio.GestorHogares;
 
-
+/**
+ * Pestaña 1: gestión de hogares (RF1) y estado del consumo ideal vs real (RF2).
+ * Arriba va el formulario, en el centro la tabla de viviendas y abajo el detalle del hogar seleccionado.
+ */
 public class PanelHogares extends PanelBase {
 
+    // gestorHogares: lógica de negocio de los hogares
+    // selector: lista de viviendas de la parte superior (se recarga cuando cambian los hogares)
     private GestorHogares gestorHogares;
     private SelectorHogar selector;
 
+    // Campos del formulario
     private JTextField txtId;
     private JTextField txtResponsable;
     private JTextField txtBarrio;
     private JTextField txtMedidor;
     private JTextField txtHabitantes;
 
+    // Tabla de hogares y etiqueta con el detalle del consumo
     private JTable tabla;
     private DefaultTableModel modeloTabla;
     private JLabel lblDetalle;
 
+    /** Arma la pantalla (formulario, tabla y detalle) y carga la tabla con los hogares existentes. */
     public PanelHogares(GestorHogares gestorHogares, SelectorHogar selector) {
         this.gestorHogares = gestorHogares;
         this.selector = selector;
@@ -49,8 +57,9 @@ public class PanelHogares extends PanelBase {
         actualizarTabla();
     }
 
+    // ---------- Construcción de la pantalla ----------
 
-
+    /** Crea el formulario con los campos y los botones, y conecta cada botón con su acción. */
     private JPanel crearFormulario() {
         JPanel formulario = new JPanel(new BorderLayout(5, 5));
         formulario.setBorder(BorderFactory.createTitledBorder("Datos del hogar"));
@@ -61,7 +70,7 @@ public class PanelHogares extends PanelBase {
         txtMedidor = new JTextField();
         txtHabitantes = new JTextField();
 
-
+        // Campos en una cuadrícula de 3 filas x 4 columnas
         JPanel campos = new JPanel(new GridLayout(3, 4, 8, 8));
         campos.add(new JLabel("ID:"));
         campos.add(txtId);
@@ -76,7 +85,7 @@ public class PanelHogares extends PanelBase {
         campos.add(new JLabel(""));
         campos.add(new JLabel(""));
 
-
+        // Botones
         JButton btnRegistrar = new JButton("Registrar Hogar");
         JButton btnActualizar = new JButton("Actualizar Habitantes");
         JButton btnEliminar = new JButton("Eliminar");
@@ -91,7 +100,7 @@ public class PanelHogares extends PanelBase {
         formulario.add(campos, BorderLayout.CENTER);
         formulario.add(botones, BorderLayout.SOUTH);
 
-
+        // Eventos de los botones
         btnRegistrar.addActionListener(e -> registrarHogar());
         btnActualizar.addActionListener(e -> actualizarHabitantes());
         btnEliminar.addActionListener(e -> eliminarHogar());
@@ -100,6 +109,7 @@ public class PanelHogares extends PanelBase {
         return formulario;
     }
 
+    /** Crea la tabla de hogares (no editable). */
     private JScrollPane crearTabla() {
         String[] columnas = {"ID", "Responsable", "Barrio", "Medidor", "Habitantes", "Estado Consumo"};
 
@@ -112,7 +122,7 @@ public class PanelHogares extends PanelBase {
         tabla = new JTable(modeloTabla);
         tabla.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-
+        // Al seleccionar una fila, se llenan los campos del formulario
         tabla.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 mostrarHogarSeleccionado();
@@ -121,8 +131,9 @@ public class PanelHogares extends PanelBase {
         return new JScrollPane(tabla);
     }
 
+    // ---------- Acciones ----------
 
-
+    /** Botón "Registrar Hogar": el gestor valida los datos; se muestra un mensaje de éxito o de error. */
     private void registrarHogar() {
         boolean ok = gestorHogares.registrar(txtId.getText(), txtResponsable.getText(),
                 txtBarrio.getText(), txtMedidor.getText(), txtHabitantes.getText());
@@ -137,6 +148,7 @@ public class PanelHogares extends PanelBase {
         }
     }
 
+    /** Botón "Actualizar Habitantes": cambia los habitantes del hogar cuyo ID está en el formulario. */
     private void actualizarHabitantes() {
         boolean ok = gestorHogares.actualizarHabitantes(txtId.getText(), txtHabitantes.getText());
         if (ok) {
@@ -149,6 +161,7 @@ public class PanelHogares extends PanelBase {
         }
     }
 
+    /** Botón "Eliminar": elimina el hogar seleccionado en la tabla, después de pedir confirmación. */
     private void eliminarHogar() {
         int fila = tabla.getSelectedRow();
         if (fila < 0) {
@@ -170,6 +183,7 @@ public class PanelHogares extends PanelBase {
         }
     }
 
+    /** Vacía los campos del formulario y quita la selección de la tabla. */
     private void limpiarCampos() {
         txtId.setText("");
         txtResponsable.setText("");
@@ -179,6 +193,7 @@ public class PanelHogares extends PanelBase {
         tabla.clearSelection();
     }
 
+    /** Copia los datos del hogar seleccionado al formulario y muestra su consumo ideal vs real (RF2). */
     private void mostrarHogarSeleccionado() {
         int fila = tabla.getSelectedRow();
         if (fila < 0) {
@@ -195,7 +210,7 @@ public class PanelHogares extends PanelBase {
         txtMedidor.setText(hogar.getCodigoMedidor());
         txtHabitantes.setText(String.valueOf(hogar.getHabitantes()));
 
-
+        // Resultado de RF2: consumo ideal vs consumo real
         double ideal = gestorHogares.calcularConsumoIdeal(hogar);
         double real = gestorHogares.calcularConsumoRealDiario(hogar);
         if (real < 0) {
@@ -209,9 +224,9 @@ public class PanelHogares extends PanelBase {
         }
     }
 
+    // ---------- Métodos auxiliares ----------
 
-
-
+    /** Vuelve a llenar la tabla con los hogares del gestor. */
     public void actualizarTabla() {
         modeloTabla.setRowCount(0);
         for (Hogar h : gestorHogares.getHogares()) {
@@ -226,12 +241,13 @@ public class PanelHogares extends PanelBase {
         }
     }
 
-
+    /** Se llama al volver a esta pestaña: recarga la tabla. */
     @Override
     public void actualizar() {
         actualizarTabla();
     }
 
+    /** Muestra un mensaje de error de validación con JOptionPane. */
     private void mostrarError(String mensaje) {
         JOptionPane.showMessageDialog(this, mensaje, "Error de validación", JOptionPane.ERROR_MESSAGE);
     }
