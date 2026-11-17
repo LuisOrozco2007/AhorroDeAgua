@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
  * Pendiente → En revisión → Cerrada.
  * También guarda las recomendaciones, el lugar sospechoso y la acción realizada.
  */
-public class AlertaFuga {
+public class AlertaFuga extends EntidadBase {
 
     // Posibles estados de la alerta
     public static final String PENDIENTE = "Pendiente";
@@ -19,10 +19,8 @@ public class AlertaFuga {
     // estado: "Pendiente", "En revisión" o "Cerrada"
     // ubicacionSospechada, accionRealizada y recomendaciones: textos que se llenan durante la revisión
     // fechaCreacion y fechaCierre: cuándo se creó y cuándo se cerró la alerta
-    private int id;
     private String estado;
     private String observacion;
-    private LocalDateTime fechaCreacion;
     private LocalDateTime fechaCierre;
     private String ubicacionSospechada;
     private String accionRealizada;
@@ -30,10 +28,9 @@ public class AlertaFuga {
 
     /** Crea una alerta nueva: empieza en estado "Pendiente" y guarda la fecha y hora actuales. */
     public AlertaFuga(int id) {
-        this.id = id;
+        super(id);
         this.estado = PENDIENTE;
         this.observacion = "";
-        this.fechaCreacion = LocalDateTime.now();
         this.ubicacionSospechada = "";
         this.accionRealizada = "";
         this.recomendaciones = "";
@@ -56,18 +53,13 @@ public class AlertaFuga {
         this.accionRealizada = accion;
     }
 
-    /** Cierra la alerta: guarda la nota final, cambia el estado a "Cerrada" y registra la fecha de cierre. */
-    public void cerrar(String nota) {
-        this.observacion = nota;
+    /** Cierra la alerta y registra la fecha de cierre. */
+    public void cerrar() {
         this.estado = CERRADA;
         this.fechaCierre = LocalDateTime.now();
     }
 
     // ---------- Getters y setters ----------
-    public int getId() {
-        return id;
-    }
-
     public String getEstado() {
         return estado;
     }
@@ -78,10 +70,6 @@ public class AlertaFuga {
 
     public void setObservacion(String observacion) {
         this.observacion = observacion;
-    }
-
-    public LocalDateTime getFechaCreacion() {
-        return fechaCreacion;
     }
 
     public LocalDateTime getFechaCierre() {

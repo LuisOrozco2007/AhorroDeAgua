@@ -1,33 +1,36 @@
 package modelo;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 
 /**
  * Representa una vivienda con su medidor de agua.
  * Es la clase central del modelo: un hogar tiene muchas lecturas, pruebas de fuga,
  * metas de ahorro y puntos de consumo (relaciones de asociación del diagrama UML).
  */
-public class Hogar {
+public class Hogar extends EntidadBase {
+
+    public static final double LITROS_POR_PERSONA_DIA = 100.0;
 
     // Datos básicos del hogar (atributos privados: encapsulamiento)
-    private int id;
     private String nombreResponsable;
-    private String barrio;
+    private String direccion;
     private String codigoMedidor;
     private int habitantes;
 
     // Listas con los objetos relacionados al hogar (asociaciones del diagrama UML)
-    private ArrayList<LecturaMedidor> lecturas;
-    private ArrayList<PruebaFuga> pruebas;
-    private ArrayList<MetaAhorro> metas;
-    private ArrayList<PuntoConsumo> puntos;
+    private List<LecturaMedidor> lecturas;
+    private List<PruebaFuga> pruebas;
+    private List<MetaAhorro> metas;
+    private List<PuntoConsumo> puntos;
 
     /** Crea un hogar con sus datos básicos y con las listas vacías. */
-    public Hogar(int id, String nombreResponsable, String barrio, String codigoMedidor, int habitantes) {
-        this.id = id;
+    public Hogar(int id, String nombreResponsable, String direccion, String codigoMedidor, int habitantes) {
+        super(id);
         this.nombreResponsable = nombreResponsable;
-        this.barrio = barrio;
+        this.direccion = direccion;
         this.codigoMedidor = codigoMedidor;
         this.habitantes = habitantes;
         this.lecturas = new ArrayList<>();
@@ -38,15 +41,28 @@ public class Hogar {
 
     // ---------- Operaciones del hogar ----------
 
-    /** Cambia el número de habitantes de la vivienda. */
-    public void actualizarHabitantes(int n) {
-        this.habitantes = n;
+    /** Actualiza los datos editables del hogar sin cambiar sus metas ni otros registros. */
+    public void actualizarDatos(String nombreResponsable, String direccion, String codigoMedidor, int habitantes) {
+        this.nombreResponsable = nombreResponsable;
+        this.direccion = direccion;
+        this.codigoMedidor = codigoMedidor;
+        this.habitantes = habitantes;
+    }
+
+    /** Consumo ideal diario del hogar según la referencia de 100 litros por persona. */
+    public double calcularConsumoIdeal() {
+        return habitantes * LITROS_POR_PERSONA_DIA;
     }
 
     /** Agrega una lectura a la lista y la deja ordenada por fecha y hora. */
     public void registrarLectura(LecturaMedidor lectura) {
         lecturas.add(lectura);
         ordenarLecturas();
+    }
+
+    /** Elimina una lectura del hogar. */
+    public boolean eliminarLectura(LecturaMedidor lectura) {
+        return lecturas.remove(lectura);
     }
 
     /** Ordena las lecturas de la más antigua a la más reciente. */
@@ -69,35 +85,32 @@ public class Hogar {
         puntos.add(punto);
     }
 
+    /** Elimina un punto de consumo del hogar. */
+    public boolean eliminarPunto(PuntoConsumo punto) {
+        return puntos.remove(punto);
+    }
+
     /** Devuelve las lecturas del medidor (ordenadas por fecha y hora). */
-    public ArrayList<LecturaMedidor> obtenerLecturas() {
-        return lecturas;
+    public List<LecturaMedidor> obtenerLecturas() {
+        return Collections.unmodifiableList(lecturas);
     }
 
     /** Devuelve las pruebas de fuga del hogar. */
-    public ArrayList<PruebaFuga> obtenerPruebas() {
-        return pruebas;
+    public List<PruebaFuga> obtenerPruebas() {
+        return Collections.unmodifiableList(pruebas);
     }
 
     /** Devuelve las metas de ahorro del hogar. */
-    public ArrayList<MetaAhorro> obtenerMetas() {
-        return metas;
+    public List<MetaAhorro> obtenerMetas() {
+        return Collections.unmodifiableList(metas);
     }
 
     /** Devuelve los artefactos (puntos de consumo) del hogar. */
-    public ArrayList<PuntoConsumo> obtenerPuntos() {
-        return puntos;
+    public List<PuntoConsumo> obtenerPuntos() {
+        return Collections.unmodifiableList(puntos);
     }
 
     // ---------- Getters y setters ----------
-    public int getId() {
-        return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
     public String getNombreResponsable() {
         return nombreResponsable;
     }
@@ -106,12 +119,12 @@ public class Hogar {
         this.nombreResponsable = nombreResponsable;
     }
 
-    public String getBarrio() {
-        return barrio;
+    public String getDireccion() {
+        return direccion;
     }
 
-    public void setBarrio(String barrio) {
-        this.barrio = barrio;
+    public void setDireccion(String direccion) {
+        this.direccion = direccion;
     }
 
     public String getCodigoMedidor() {
@@ -133,6 +146,6 @@ public class Hogar {
     /** Texto que se muestra en las listas desplegables. Ej: "1 - Carlos Mendoza (MED-1001)". */
     @Override
     public String toString() {
-        return id + " - " + nombreResponsable + " (" + codigoMedidor + ")";
+        return getId() + " - " + nombreResponsable + " (" + codigoMedidor + ")";
     }
 }

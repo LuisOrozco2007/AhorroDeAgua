@@ -13,7 +13,7 @@ import java.time.LocalTime;
  * (5 litros) por la precisión del medidor. Si el consumo supera el límite sin
  * uso justificado, el resultado es "Posible fuga".
  */
-public class PruebaFuga {
+public class PruebaFuga extends EntidadBase {
 
     // Posibles resultados de la prueba
     public static final String NORMAL = "Normal";
@@ -34,7 +34,6 @@ public class PruebaFuga {
     // limiteLitros: consumo máximo permitido (de 0 a 5 litros)
     // resultado: "Normal", "Posible fuga" o "Datos inválidos"
     // alerta: solo existe si el resultado es "Posible fuga" (0..1)
-    private int id;
     private LecturaMedidor lecturaInicial;
     private LecturaMedidor lecturaFinal;
     private boolean sinUsoConfirmado;
@@ -47,7 +46,7 @@ public class PruebaFuga {
     /** Crea una prueba sin evaluar; la fecha de registro es la fecha y hora actuales. */
     public PruebaFuga(int id, LecturaMedidor lecturaInicial, LecturaMedidor lecturaFinal,
                       boolean sinUsoConfirmado, double limiteLitros) {
-        this.id = id;
+        super(id);
         this.lecturaInicial = lecturaInicial;
         this.lecturaFinal = lecturaFinal;
         this.sinUsoConfirmado = sinUsoConfirmado;
@@ -70,22 +69,43 @@ public class PruebaFuga {
      * y la confirmación de que nadie usó agua.
      */
     public boolean esValida() {
+        return motivoInvalidez() == null;
+    }
+
+    /** Devuelve el motivo de invalidez o null si la prueba cumple sus reglas. */
+    public String motivoInvalidez() {
         if (lecturaInicial == null || lecturaFinal == null) {
-            return false;
+            return "Debe seleccionar la lectura inicial y la lectura final.\n"
+                    + "Si el hogar tiene menos de dos lecturas, registre más en la pestaña Lecturas.";
+        }
+        if (lecturaInicial == lecturaFinal) {
+            return "La lectura inicial y la final deben ser distintas.";
         }
         if (!lecturaFinal.getFechaHora().isAfter(lecturaInicial.getFechaHora())) {
-            return false;
+            return "La lectura final debe ser posterior a la lectura inicial.";
+        }
+        if (Double.isNaN(limiteLitros) || Double.isInfinite(limiteLitros) || limiteLitros < 0) {
+            return "El límite de consumo no puede ser negativo.";
+        }
+        if (limiteLitros > TOLERANCIA_LITROS) {
+            return "En la madrugada el consumo debe ser casi cero. El límite no puede superar "
+                    + TOLERANCIA_LITROS + " L (tolerancia del medidor).";
+        }
+        if (!sinUsoConfirmado) {
+            return "Para ejecutar la prueba debe confirmar que no se usó agua en la vivienda durante el periodo.";
+        }
+        if (!finalEnMadrugada()) {
+            return "La lectura final debe ser de la madrugada (entre 00:00 y "
+                    + String.format("%02d:00", HORA_FIN_MADRUGADA) + ").";
+        }
+        if (calcularHoras() > DURACION_MAXIMA_HORAS) {
+            return "Una prueba nocturna no puede durar más de " + (int) DURACION_MAXIMA_HORAS
+                    + " horas. Elija una lectura inicial de la noche anterior (por ejemplo 23:00).";
         }
         if (lecturaFinal.getAcumuladoM3() < lecturaInicial.getAcumuladoM3()) {
-            return false;
+            return "La lectura final no puede ser menor que la lectura inicial.";
         }
-        if (!finalEnMadrugada() || calcularHoras() > DURACION_MAXIMA_HORAS) {
-            return false;
-        }
-        if (limiteLitros < 0 || limiteLitros > TOLERANCIA_LITROS) {
-            return false;
-        }
-        return sinUsoConfirmado;
+        return null;
     }
 
     /** Litros consumidos entre la lectura inicial y la final (redondeado a 2 decimales). */
@@ -129,10 +149,6 @@ public class PruebaFuga {
     }
 
     // ---------- Getters y setters ----------
-    public int getId() {
-        return id;
-    }
-
     public LecturaMedidor getLecturaInicial() {
         return lecturaInicial;
     }

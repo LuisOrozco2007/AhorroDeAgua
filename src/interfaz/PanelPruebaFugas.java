@@ -6,6 +6,7 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -25,11 +26,12 @@ import modelo.AlertaFuga;
 import modelo.Hogar;
 import modelo.LecturaMedidor;
 import modelo.PruebaFuga;
+import negocio.ComparacionHistorica;
 import negocio.GestorFugas;
 
 /**
  * Pestaña 4: pruebas de fuga y alertas (RF7).
- * Compara dos lecturas del medidor con un límite de consumo nocturno.
+ * Compara lecturas nocturnas y permite analizar aumentos frente al promedio histórico.
  */
 public class PanelPruebaFugas extends PanelBase {
 
@@ -68,7 +70,10 @@ public class PanelPruebaFugas extends PanelBase {
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        add(crearFormulario(), BorderLayout.NORTH);
+        JPanel formularios = new JPanel(new BorderLayout(5, 5));
+        formularios.add(crearFormulario(), BorderLayout.NORTH);
+        formularios.add(crearFormularioAnalisisHistorico(), BorderLayout.SOUTH);
+        add(formularios, BorderLayout.NORTH);
         add(crearTabla(), BorderLayout.CENTER);
         add(crearPanelResultado(), BorderLayout.SOUTH);
 
@@ -116,6 +121,55 @@ public class PanelPruebaFugas extends PanelBase {
         btnEjecutar.addActionListener(e -> ejecutarPrueba());
 
         return formulario;
+    }
+
+    /** Crea los controles para comparar el consumo reciente con el promedio previo. */
+    private JPanel crearFormularioAnalisisHistorico() {
+        JPanel formulario = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 5));
+        formulario.setBorder(BorderFactory.createTitledBorder("Aumento frente al promedio histórico"));
+        JTextField txtDesde = new JTextField(LocalDate.of(2026, 11, 1).toString(), 10);
+        JTextField txtHasta = new JTextField(LocalDate.of(2026, 11, 4).toString(), 10);
+        JTextField txtFactor = new JTextField("1.5", 5);
+        JButton btnAnalizar = new JButton("Analizar consumo");
+        formulario.add(new JLabel("Desde (AAAA-MM-DD):"));
+        formulario.add(txtDesde);
+        formulario.add(new JLabel("Hasta (AAAA-MM-DD):"));
+        formulario.add(txtHasta);
+        formulario.add(new JLabel("Factor (> 1):"));
+        formulario.add(txtFactor);
+        formulario.add(btnAnalizar);
+        btnAnalizar.addActionListener(e -> analizarConsumoHistorico(txtDesde, txtHasta, txtFactor));
+        return formulario;
+    }
+
+    /** Muestra el análisis histórico sin crear ni modificar alertas. */
+    private void analizarConsumoHistorico(JTextField txtDesde, JTextField txtHasta, JTextField txtFactor) {
+        Hogar hogar = selector.getHogar();
+        if (hogar == null) {
+            mostrarError("Debe seleccionar un hogar.");
+            return;
+        }
+        LocalDate desde;
+        LocalDate hasta;
+        double factor;
+        try {
+            desde = LectorEntradas.leerFecha(txtDesde.getText(),
+                    "Fecha inválida. Use el formato AAAA-MM-DD (por ejemplo 2026-11-05).");
+            hasta = LectorEntradas.leerFecha(txtHasta.getText(),
+                    "Fecha inválida. Use el formato AAAA-MM-DD (por ejemplo 2026-11-05).");
+            factor = LectorEntradas.leerDecimal(txtFactor.getText(),
+                    "El factor de aumento debe ser un número.");
+        } catch (IllegalArgumentException e) {
+            mostrarError(e.getMessage());
+            return;
+        }
+        ComparacionHistorica resultado = gestorFugas.analizarConsumoHistorico(hogar, desde, hasta, factor);
+        if (resultado == null) {
+            mostrarError(gestorFugas.getMensajeError());
+            return;
+        }
+        JOptionPane.showMessageDialog(this, resultado.resumen(), "Análisis de consumo histórico",
+                JOptionPane.INFORMATION_MESSAGE);
     }
 
     /** Crea la tabla con el historial de pruebas del hogar. */
@@ -190,8 +244,19 @@ public class PanelPruebaFugas extends PanelBase {
         LecturaMedidor inicial = (LecturaMedidor) cmbInicial.getSelectedItem();
         LecturaMedidor fin = (LecturaMedidor) cmbFinal.getSelectedItem();
 
+        double limite;
+        try {
+            if (txtLimite.getText().trim().isEmpty()) {
+                throw new IllegalArgumentException("Debe ingresar el límite de consumo nocturno en litros.");
+            }
+            limite = LectorEntradas.leerDecimal(txtLimite.getText(),
+                    "El límite debe ser un número (por ejemplo 5.0).");
+        } catch (IllegalArgumentException e) {
+            mostrarError(e.getMessage());
+            return;
+        }
         PruebaFuga prueba = gestorFugas.ejecutarPrueba(hogar, inicial, fin,
-                txtLimite.getText(), chkSinUso.isSelected());
+                limite, chkSinUso.isSelected());
         if (prueba == null) {
             JOptionPane.showMessageDialog(this, gestorFugas.getMensajeError(),
                     "Error de validación", JOptionPane.ERROR_MESSAGE);

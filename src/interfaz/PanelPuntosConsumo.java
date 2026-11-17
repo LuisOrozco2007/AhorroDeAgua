@@ -14,13 +14,16 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
+import modelo.CatalogoArtefactos;
 import modelo.Hogar;
 import modelo.PuntoConsumo;
+import modelo.TipoArtefacto;
 import negocio.GestorPuntosConsumo;
 
 /**
  * Pestaña 2: puntos de consumo (RF3) con el cálculo del consumo estimado (RF4).
- * El tipo de artefacto se elige en una lista desplegable que rellena el caudal estándar.
+ * El tipo de artefacto se elige en una lista desplegable que rellena el caudal estándar;
+ * también permite cargar, actualizar y eliminar puntos existentes.
  */
 public class PanelPuntosConsumo extends PanelBase {
 
@@ -31,13 +34,15 @@ public class PanelPuntosConsumo extends PanelBase {
 
     // Campos del formulario
     private JTextField txtUbicacion;
-    private JComboBox<String> cmbArtefacto;
+    private JComboBox<TipoArtefacto> cmbArtefacto;
+    private CatalogoArtefactos catalogo;
     private JTextField txtNombrePersonalizado;   // Solo se habilita con "Otros"
     private JLabel lblCaudal;                    // Cambia según la unidad (L/min, L/descarga, L/ciclo)
     private JTextField txtCaudal;
     private JLabel lblDuracion;
     private JTextField txtDuracion;              // Solo se habilita si el caudal es en L/min
     private JTextField txtFrecuencia;
+    private Integer idPuntoEnEdicion;
 
     // Tabla de artefactos y etiqueta con el total del hogar
     private JTable tabla;
@@ -48,6 +53,7 @@ public class PanelPuntosConsumo extends PanelBase {
     public PanelPuntosConsumo(SelectorHogar selector, GestorPuntosConsumo gestorPuntos) {
         this.selector = selector;
         this.gestorPuntos = gestorPuntos;
+        this.catalogo = new CatalogoArtefactos();
 
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -70,7 +76,10 @@ public class PanelPuntosConsumo extends PanelBase {
         formulario.setBorder(BorderFactory.createTitledBorder("Nuevo artefacto de consumo"));
 
         txtUbicacion = new JTextField();
-        cmbArtefacto = new JComboBox<>(PuntoConsumo.ARTEFACTOS);
+        cmbArtefacto = new JComboBox<>();
+        for (TipoArtefacto tipo : catalogo.obtenerTipos()) {
+            cmbArtefacto.addItem(tipo);
+        }
         txtNombrePersonalizado = new JTextField();
         txtCaudal = new JTextField();
         txtDuracion = new JTextField();
@@ -94,9 +103,13 @@ public class PanelPuntosConsumo extends PanelBase {
         campos.add(txtFrecuencia);
 
         JButton btnAgregar = new JButton("Agregar Artefacto");
+        JButton btnCargar = new JButton("Cargar para editar");
+        JButton btnActualizar = new JButton("Actualizar Artefacto");
         JButton btnEliminar = new JButton("Eliminar Artefacto");
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 5));
         botones.add(btnAgregar);
+        botones.add(btnCargar);
+        botones.add(btnActualizar);
         botones.add(btnEliminar);
 
         formulario.add(campos, BorderLayout.CENTER);
@@ -104,7 +117,9 @@ public class PanelPuntosConsumo extends PanelBase {
 
         // Eventos
         cmbArtefacto.addActionListener(e -> alCambiarArtefacto());
-        btnAgregar.addActionListener(e -> agregarArtefacto());
+        btnAgregar.addActionListener(e -> guardarArtefacto(false));
+        btnCargar.addActionListener(e -> cargarArtefactoSeleccionado());
+        btnActualizar.addActionListener(e -> guardarArtefacto(true));
         btnEliminar.addActionListener(e -> eliminarArtefacto());
 
         // Deja el formulario listo para la primera opción de la lista (Ducha)
@@ -137,13 +152,13 @@ public class PanelPuntosConsumo extends PanelBase {
      *  - Deshabilita la duración cuando el caudal es por descarga o por ciclo.
      */
     private void alCambiarArtefacto() {
-        String artefacto = (String) cmbArtefacto.getSelectedItem();
+        TipoArtefacto artefacto = (TipoArtefacto) cmbArtefacto.getSelectedItem();
         if (artefacto == null) {
             return;
         }
-        boolean esOtros = artefacto.equals(PuntoConsumo.OTROS);
-        String unidad = PuntoConsumo.obtenerUnidad(artefacto);
-        boolean usaDuracion = unidad.equals(PuntoConsumo.UNIDAD_MINUTO);
+        boolean esOtros = artefacto.getNombre().equals(CatalogoArtefactos.OTROS);
+        String unidad = artefacto.getUnidad();
+        boolean usaDuracion = unidad.equals(TipoArtefacto.UNIDAD_MINUTO);
 
         // Nombre personalizado
         txtNombrePersonalizado.setEnabled(esOtros);
@@ -154,7 +169,7 @@ public class PanelPuntosConsumo extends PanelBase {
         if (esOtros) {
             txtCaudal.setText("");
         } else {
-            txtCaudal.setText(String.valueOf(PuntoConsumo.obtenerCaudalPredeterminado(artefacto)));
+            txtCaudal.setText(String.valueOf(artefacto.getCaudalPredeterminado()));
         }
         txtCaudal.setEnabled(true);   // siempre se puede editar
 
@@ -168,25 +183,107 @@ public class PanelPuntosConsumo extends PanelBase {
     }
 
     /** Botón "Agregar Artefacto": el gestor valida los datos; si hay un error se muestra con JOptionPane. */
-    private void agregarArtefacto() {
+    private void guardarArtefacto(boolean actualizar) {
         Hogar hogar = selector.getHogar();
         if (hogar == null) {
             mostrarError("Debe seleccionar un hogar.");
             return;
         }
-        String artefacto = (String) cmbArtefacto.getSelectedItem();
-        boolean ok = gestorPuntos.registrar(hogar, txtUbicacion.getText(), artefacto,
-                txtNombrePersonalizado.getText(), txtCaudal.getText(),
-                txtDuracion.getText(), txtFrecuencia.getText());
+        if (actualizar && idPuntoEnEdicion == null) {
+            mostrarError("Seleccione un artefacto y cárguelo para editar.");
+            return;
+        }
+        TipoArtefacto artefacto = (TipoArtefacto) cmbArtefacto.getSelectedItem();
+        double caudal;
+        double duracion = 0;
+        int frecuencia;
+        boolean esMinuto = artefacto != null
+                && artefacto.getUnidad().equals(TipoArtefacto.UNIDAD_MINUTO);
+        try {
+            if (artefacto == null) {
+                throw new IllegalArgumentException("Debe seleccionar un tipo de artefacto.");
+            }
+            if (txtUbicacion.getText().trim().isEmpty()) {
+                throw new IllegalArgumentException(
+                        "Debe ingresar el nombre o la ubicación del artefacto (por ejemplo: Baño principal).");
+            }
+            if (artefacto.getNombre().equals(CatalogoArtefactos.OTROS)
+                    && txtNombrePersonalizado.getText().trim().isEmpty()) {
+                throw new IllegalArgumentException("Escriba el nombre del artefacto personalizado.");
+            }
+            if (txtCaudal.getText().trim().isEmpty() || txtFrecuencia.getText().trim().isEmpty()
+                    || (esMinuto && txtDuracion.getText().trim().isEmpty())) {
+                throw new IllegalArgumentException("Todos los campos son obligatorios.");
+            }
+            caudal = LectorEntradas.leerDecimal(txtCaudal.getText(),
+                    "El caudal debe ser un número (por ejemplo 9.0).");
+            if (esMinuto) {
+                duracion = LectorEntradas.leerDecimal(txtDuracion.getText(),
+                        "La duración debe ser un número (por ejemplo 5).");
+            }
+            frecuencia = LectorEntradas.leerEntero(txtFrecuencia.getText(),
+                    "La frecuencia diaria debe ser un número entero.");
+        } catch (IllegalArgumentException e) {
+            mostrarError(e.getMessage());
+            return;
+        }
+        boolean ok;
+        if (actualizar) {
+            ok = gestorPuntos.actualizar(hogar, idPuntoEnEdicion, txtUbicacion.getText(), artefacto,
+                    txtNombrePersonalizado.getText(), caudal, duracion, frecuencia);
+        } else {
+            ok = gestorPuntos.registrar(hogar, txtUbicacion.getText(), artefacto,
+                    txtNombrePersonalizado.getText(), caudal, duracion, frecuencia);
+        }
         if (ok) {
             txtUbicacion.setText("");
             txtFrecuencia.setText("");
+            idPuntoEnEdicion = null;
             alCambiarArtefacto();   // restablece caudal, nombre y duración
             actualizarTabla();
         } else {
             JOptionPane.showMessageDialog(this, gestorPuntos.getMensajeError(),
                     "Error de validación", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    /** Carga en el formulario los datos del artefacto seleccionado para poder actualizarlos. */
+    private void cargarArtefactoSeleccionado() {
+        Hogar hogar = selector.getHogar();
+        int fila = tabla.getSelectedRow();
+        if (hogar == null) {
+            mostrarError("Debe seleccionar un hogar.");
+            return;
+        }
+        if (fila < 0) {
+            mostrarError("Seleccione un artefacto de la tabla para editarlo.");
+            return;
+        }
+        int id = (Integer) modeloTabla.getValueAt(fila, 0);
+        PuntoConsumo punto = null;
+        for (PuntoConsumo candidato : hogar.obtenerPuntos()) {
+            if (candidato.getId() == id) {
+                punto = candidato;
+                break;
+            }
+        }
+        if (punto == null) {
+            mostrarError("No se encontró el artefacto seleccionado.");
+            return;
+        }
+        TipoArtefacto tipo = catalogo.buscarPorNombre(punto.getTipo());
+        if (tipo == null) {
+            tipo = catalogo.buscarPorNombre(CatalogoArtefactos.OTROS);
+            cmbArtefacto.setSelectedItem(tipo);
+            txtNombrePersonalizado.setText(punto.getTipo());
+        } else {
+            cmbArtefacto.setSelectedItem(tipo);
+        }
+        txtUbicacion.setText(punto.getNombre());
+        txtCaudal.setText(String.valueOf(punto.getCaudal()));
+        txtDuracion.setText(punto.usaDuracion() ? String.valueOf(punto.getDuracionMinutos()) : "No aplica");
+        txtFrecuencia.setText(String.valueOf(punto.getFrecuenciaDiaria()));
+        idPuntoEnEdicion = id;
     }
 
     /** Botón "Eliminar Artefacto": elimina el artefacto seleccionado en la tabla. */

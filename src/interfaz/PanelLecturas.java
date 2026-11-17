@@ -5,9 +5,10 @@ import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -49,7 +50,7 @@ public class PanelLecturas extends PanelBase {
     // mostradas: lecturas que se ven en la tabla (misma posición que las filas)
     // filtroDesde y filtroHasta: filtro de fechas activo (null = sin filtro)
     // hogarMostradoId: ID del último hogar mostrado (para limpiar el formulario al cambiar de hogar)
-    private ArrayList<LecturaMedidor> mostradas = new ArrayList<>();
+    private List<LecturaMedidor> mostradas = new ArrayList<>();
     private LocalDate filtroDesde = null;
     private LocalDate filtroHasta = null;
     private Integer hogarMostradoId;
@@ -170,7 +171,25 @@ public class PanelLecturas extends PanelBase {
             mostrarError("Debe seleccionar un hogar.");
             return;
         }
-        boolean ok = gestorLecturas.registrar(hogar, txtFecha.getText(), txtHora.getText(), txtValor.getText());
+        LocalDate fecha;
+        LocalTime hora;
+        double valor;
+        try {
+            if (txtFecha.getText().trim().isEmpty() || txtHora.getText().trim().isEmpty()
+                    || txtValor.getText().trim().isEmpty()) {
+                throw new IllegalArgumentException("Todos los campos son obligatorios (fecha, hora y valor del medidor).");
+            }
+            fecha = LectorEntradas.leerFecha(txtFecha.getText(),
+                    "Fecha inválida. Use el formato AAAA-MM-DD (por ejemplo 2026-11-05).");
+            hora = LectorEntradas.leerHora(txtHora.getText(),
+                    "Hora inválida. Use el formato HH:MM (por ejemplo 07:30).");
+            valor = LectorEntradas.leerDecimal(txtValor.getText(),
+                    "El valor del medidor debe ser un número (por ejemplo 120.450).");
+        } catch (IllegalArgumentException e) {
+            mostrarError(e.getMessage());
+            return;
+        }
+        boolean ok = gestorLecturas.registrar(hogar, fecha, hora, valor);
         if (ok) {
             JOptionPane.showMessageDialog(this, "Lectura registrada correctamente.",
                     "Registro exitoso", JOptionPane.INFORMATION_MESSAGE);
@@ -194,8 +213,25 @@ public class PanelLecturas extends PanelBase {
             return;
         }
         LecturaMedidor lectura = mostradas.get(fila);
-        boolean ok = gestorLecturas.actualizar(hogar, lectura.getId(),
-                txtFecha.getText(), txtHora.getText(), txtValor.getText());
+        LocalDate fecha;
+        LocalTime hora;
+        double valor;
+        try {
+            if (txtFecha.getText().trim().isEmpty() || txtHora.getText().trim().isEmpty()
+                    || txtValor.getText().trim().isEmpty()) {
+                throw new IllegalArgumentException("Todos los campos son obligatorios (fecha, hora y valor del medidor).");
+            }
+            fecha = LectorEntradas.leerFecha(txtFecha.getText(),
+                    "Fecha inválida. Use el formato AAAA-MM-DD (por ejemplo 2026-11-05).");
+            hora = LectorEntradas.leerHora(txtHora.getText(),
+                    "Hora inválida. Use el formato HH:MM (por ejemplo 07:30).");
+            valor = LectorEntradas.leerDecimal(txtValor.getText(),
+                    "El valor del medidor debe ser un número (por ejemplo 120.450).");
+        } catch (IllegalArgumentException e) {
+            mostrarError(e.getMessage());
+            return;
+        }
+        boolean ok = gestorLecturas.actualizar(hogar, lectura.getId(), fecha, hora, valor);
         if (ok) {
             JOptionPane.showMessageDialog(this, "Lectura modificada. Los consumos fueron recalculados.",
                     "Modificación exitosa", JOptionPane.INFORMATION_MESSAGE);
@@ -238,13 +274,15 @@ public class PanelLecturas extends PanelBase {
         LocalDate hasta = null;
         try {
             if (!txtDesde.getText().trim().isEmpty()) {
-                desde = LocalDate.parse(txtDesde.getText().trim());
+                desde = LectorEntradas.leerFecha(txtDesde.getText(),
+                        "Fecha inválida en el filtro. Use el formato AAAA-MM-DD.");
             }
             if (!txtHasta.getText().trim().isEmpty()) {
-                hasta = LocalDate.parse(txtHasta.getText().trim());
+                hasta = LectorEntradas.leerFecha(txtHasta.getText(),
+                        "Fecha inválida en el filtro. Use el formato AAAA-MM-DD.");
             }
-        } catch (DateTimeParseException e) {
-            mostrarError("Fecha inválida en el filtro. Use el formato AAAA-MM-DD.");
+        } catch (IllegalArgumentException e) {
+            mostrarError(e.getMessage());
             return;
         }
         if (desde != null && hasta != null && desde.isAfter(hasta)) {

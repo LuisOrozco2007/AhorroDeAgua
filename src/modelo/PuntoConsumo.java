@@ -8,55 +8,7 @@ package modelo;
  *  - L/min      (ducha, grifo, manguera): el volumen depende de la duración del uso.
  *  - L/descarga (inodoro) y L/ciclo (lavadora): el volumen depende solo de las veces que se usa.
  */
-public class PuntoConsumo {
-
-    // ---------- Catálogo de artefactos con su caudal predeterminado ----------
-    public static final String OTROS = "Otros";
-    public static final String UNIDAD_MINUTO = "L/min";
-    public static final String UNIDAD_DESCARGA = "L/descarga";
-    public static final String UNIDAD_CICLO = "L/ciclo";
-
-    // Las tres listas tienen el mismo orden: la posición 0 es la Ducha, la 1 el Grifo, etc.
-    public static final String[] ARTEFACTOS = {
-        "Ducha",
-        "Grifo de cocina / lavabo",
-        "Inodoro",
-        "Lavadora",
-        "Manguera de jardín",
-        OTROS
-    };
-    public static final double[] CAUDALES_PREDETERMINADOS = {9.0, 5.0, 6.0, 50.0, 15.0, 0.0};
-    public static final String[] UNIDADES = {
-        UNIDAD_MINUTO, UNIDAD_MINUTO, UNIDAD_DESCARGA, UNIDAD_CICLO, UNIDAD_MINUTO, UNIDAD_MINUTO
-    };
-
-    /** Devuelve la posición del artefacto en el catálogo, o -1 si no está. */
-    private static int buscarIndice(String artefacto) {
-        for (int i = 0; i < ARTEFACTOS.length; i++) {
-            if (ARTEFACTOS[i].equals(artefacto)) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    /** Caudal estándar del artefacto (0 si es "Otros" o no está en el catálogo). */
-    public static double obtenerCaudalPredeterminado(String artefacto) {
-        int i = buscarIndice(artefacto);
-        if (i < 0) {
-            return 0.0;
-        }
-        return CAUDALES_PREDETERMINADOS[i];
-    }
-
-    /** Unidad del caudal del artefacto. Si no está en el catálogo se asume L/min. */
-    public static String obtenerUnidad(String artefacto) {
-        int i = buscarIndice(artefacto);
-        if (i < 0) {
-            return UNIDAD_MINUTO;
-        }
-        return UNIDADES[i];
-    }
+public class PuntoConsumo extends EntidadBase {
 
     // ---------- Atributos ----------
     // nombre: ubicación del artefacto (por ejemplo "Baño principal")
@@ -64,7 +16,6 @@ public class PuntoConsumo {
     // caudal: caudal en la unidad indicada (L/min, L/descarga o L/ciclo)
     // duracionMinutos: duración de cada uso (solo se usa con L/min)
     // frecuenciaDiaria: veces que se usa al día
-    private int id;
     private String nombre;
     private String tipo;
     private double caudal;
@@ -75,7 +26,7 @@ public class PuntoConsumo {
     /** Crea un artefacto con todos sus datos. */
     public PuntoConsumo(int id, String nombre, String tipo, double caudal, String unidad,
                         double duracionMinutos, int frecuenciaDiaria) {
-        this.id = id;
+        super(id);
         this.nombre = nombre;
         this.tipo = tipo;
         this.caudal = caudal;
@@ -86,7 +37,7 @@ public class PuntoConsumo {
 
     /** Indica si el volumen depende de la duración del uso (solo cuando el caudal está en L/min). */
     public boolean usaDuracion() {
-        return unidad.equals(UNIDAD_MINUTO);
+        return unidad.equals(TipoArtefacto.UNIDAD_MINUTO);
     }
 
     /**
@@ -115,14 +66,6 @@ public class PuntoConsumo {
     }
 
     // ---------- Getters y setters ----------
-
-    public int getId() {
-        return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
 
     public String getNombre() {
         return nombre;

@@ -9,10 +9,9 @@ import java.time.format.DateTimeFormatter;
  * Representa una lectura del medidor de agua en metros cúbicos (m3),
  * con la fecha y la hora en que se tomó.
  */
-public class LecturaMedidor {
+public class LecturaMedidor extends EntidadBase {
 
     // Atributos privados (encapsulamiento)
-    private int id;
     private LocalDateTime fechaHora;
     private double acumuladoM3;
     private String codigoMedidor;
@@ -21,7 +20,7 @@ public class LecturaMedidor {
 
     /** Crea una lectura. El origen del dato queda como "Manual" y la observación vacía. */
     public LecturaMedidor(int id, LocalDateTime fechaHora, double acumuladoM3, String codigoMedidor) {
-        this.id = id;
+        super(id);
         this.fechaHora = fechaHora;
         this.acumuladoM3 = acumuladoM3;
         this.codigoMedidor = codigoMedidor;
@@ -45,14 +44,6 @@ public class LecturaMedidor {
     }
 
     // ---------- Getters y setters ----------
-    public int getId() {
-        return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
     public LocalDateTime getFechaHora() {
         return fechaHora;
     }
@@ -107,6 +98,6 @@ public class LecturaMedidor {
     @Override
     public String toString() {
         DateTimeFormatter formato = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-        return "#" + id + "  " + fechaHora.format(formato) + "  (" + String.format("%.3f", acumuladoM3) + " m3)";
+        return "#" + getId() + "  " + fechaHora.format(formato) + "  (" + String.format("%.3f", acumuladoM3) + " m3)";
     }
 }

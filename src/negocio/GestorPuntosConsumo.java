@@ -1,23 +1,21 @@
 package negocio;
 
 import modelo.Hogar;
+import modelo.CatalogoArtefactos;
 import modelo.PuntoConsumo;
+import modelo.TipoArtefacto;
 
 /**
- * RF3 y RF4: registra los artefactos de consumo de agua de cada hogar y
+ * RF3 y RF4: registra, actualiza y elimina los artefactos de consumo de agua de cada hogar y
  * calcula su consumo estimado (volumen diario, mensual y porcentaje de impacto).
  */
-public class GestorPuntosConsumo {
+public class GestorPuntosConsumo extends GestorBase {
 
     // contadorId: da un número de ID único a cada elemento que se registra
-    // mensajeError: guarda el texto del último error de validación
     private int contadorId;
-    private String mensajeError;
-
     /** Crea el gestor con el contador de ID en 1 y sin mensaje de error. */
     public GestorPuntosConsumo() {
         contadorId = 1;
-        mensajeError = "";
     }
 
     // ---------- RF3: Gestión de puntos de consumo ----------
@@ -26,57 +24,64 @@ public class GestorPuntosConsumo {
      * Registra un artefacto en el hogar. Devuelve false si hay un error de validación.
      *
      * @param ubicacion            dónde está el artefacto (ej. "Baño principal")
-     * @param artefacto            opción elegida en la lista (ej. "Ducha" u "Otros")
+     * @param artefacto            tipo elegido en el catálogo
      * @param nombrePersonalizado  nombre escrito por el usuario (solo se usa si eligió "Otros")
      */
-    public boolean registrar(Hogar hogar, String ubicacion, String artefacto, String nombrePersonalizado,
-                             String caudalTxt, String duracionTxt, String frecuenciaTxt) {
+    public boolean registrar(Hogar hogar, String ubicacion, TipoArtefacto artefacto,
+                             String nombrePersonalizado, double caudal, double duracion, int frecuencia) {
         if (hogar == null) {
             return error("Debe seleccionar un hogar.");
         }
-        if (artefacto == null || artefacto.trim().isEmpty()) {
-            return error("Debe seleccionar un tipo de artefacto.");
+        if (!validarDatos(ubicacion, artefacto, nombrePersonalizado, caudal, duracion, frecuencia)) {
+            return false;
         }
-        if (ubicacion.trim().isEmpty()) {
+
+        // Si eligió "Otros", el artefacto se guarda con el nombre que escribió el usuario
+        String tipo = obtenerTipo(artefacto, nombrePersonalizado);
+        String unidad = artefacto.getUnidad();
+
+        hogar.agregarPunto(new PuntoConsumo(contadorId, ubicacion.trim(), tipo,
+                caudal, unidad, duracion, frecuencia));
+        contadorId++;
+        return true;
+    }
+
+    /** Actualiza los datos de un artefacto existente del hogar. */
+    public boolean actualizar(Hogar hogar, int idPunto, String ubicacion, TipoArtefacto artefacto,
+                              String nombrePersonalizado, double caudal, double duracion, int frecuencia) {
+        if (hogar == null) {
+            return error("Debe seleccionar un hogar.");
+        }
+        PuntoConsumo punto = buscarPunto(hogar, idPunto);
+        if (punto == null) {
+            return error("No se encontró el artefacto seleccionado.");
+        }
+        if (!validarDatos(ubicacion, artefacto, nombrePersonalizado, caudal, duracion, frecuencia)) {
+            return false;
+        }
+        punto.setNombre(ubicacion.trim());
+        punto.setTipo(obtenerTipo(artefacto, nombrePersonalizado));
+        punto.setCaudal(caudal);
+        punto.setUnidad(artefacto.getUnidad());
+        punto.setDuracionMinutos(duracion);
+        punto.setFrecuenciaDiaria(frecuencia);
+        return true;
+    }
+
+    /** Comparte entre registrar y actualizar las reglas de los datos de un punto de consumo. */
+    private boolean validarDatos(String ubicacion, TipoArtefacto artefacto, String nombrePersonalizado,
+                                 double caudal, double duracion, int frecuencia) {
+        if (ubicacion == null || ubicacion.trim().isEmpty()) {
             return error("Debe ingresar el nombre o la ubicación del artefacto (por ejemplo: Baño principal).");
         }
-
-        boolean esOtros = artefacto.equals(PuntoConsumo.OTROS);
-        if (esOtros && nombrePersonalizado.trim().isEmpty()) {
+        if (artefacto == null) {
+            return error("Debe seleccionar un tipo de artefacto.");
+        }
+        boolean esOtros = artefacto.getNombre().equals(CatalogoArtefactos.OTROS);
+        if (esOtros && (nombrePersonalizado == null || nombrePersonalizado.trim().isEmpty())) {
             return error("Escriba el nombre del artefacto personalizado.");
         }
-
-        // La unidad depende del artefacto: solo los de L/min necesitan la duración de uso
-        String unidad = PuntoConsumo.obtenerUnidad(artefacto);
-        boolean usaDuracion = unidad.equals(PuntoConsumo.UNIDAD_MINUTO);
-
-        if (caudalTxt.trim().isEmpty() || frecuenciaTxt.trim().isEmpty()
-                || (usaDuracion && duracionTxt.trim().isEmpty())) {
-            return error("Todos los campos son obligatorios.");
-        }
-
-        double caudal;
-        double duracion = 0;
-        int frecuencia;
-        try {
-            caudal = Double.parseDouble(caudalTxt.trim().replace(',', '.'));
-        } catch (NumberFormatException e) {
-            return error("El caudal debe ser un número (por ejemplo 9.0).");
-        }
-        if (usaDuracion) {
-            try {
-                duracion = Double.parseDouble(duracionTxt.trim().replace(',', '.'));
-            } catch (NumberFormatException e) {
-                return error("La duración debe ser un número (por ejemplo 5).");
-            }
-        }
-        try {
-            frecuencia = Integer.parseInt(frecuenciaTxt.trim());
-        } catch (NumberFormatException e) {
-            return error("La frecuencia diaria debe ser un número entero.");
-        }
-
-        // RF4: los datos deben ser mayores a cero y coherentes
+        boolean usaDuracion = artefacto.getUnidad().equals(TipoArtefacto.UNIDAD_MINUTO);
         if (Double.isNaN(caudal) || Double.isInfinite(caudal) || caudal <= 0) {
             return error("El caudal debe ser mayor que 0.");
         }
@@ -89,14 +94,21 @@ public class GestorPuntosConsumo {
         if (usaDuracion && duracion * frecuencia > 1440) {
             return error("El tiempo total de uso al día no puede superar 1440 minutos (24 horas).");
         }
-
-        // Si eligió "Otros", el artefacto se guarda con el nombre que escribió el usuario
-        String tipo = esOtros ? nombrePersonalizado.trim() : artefacto;
-
-        hogar.agregarPunto(new PuntoConsumo(contadorId, ubicacion.trim(), tipo,
-                caudal, unidad, duracion, frecuencia));
-        contadorId++;
         return true;
+    }
+
+    private String obtenerTipo(TipoArtefacto artefacto, String nombrePersonalizado) {
+        return artefacto.getNombre().equals(CatalogoArtefactos.OTROS)
+                ? nombrePersonalizado.trim() : artefacto.getNombre();
+    }
+
+    private PuntoConsumo buscarPunto(Hogar hogar, int idPunto) {
+        for (PuntoConsumo punto : hogar.obtenerPuntos()) {
+            if (punto.getId() == idPunto) {
+                return punto;
+            }
+        }
+        return null;
     }
 
     /** Da de baja un artefacto del hogar. */
@@ -104,11 +116,9 @@ public class GestorPuntosConsumo {
         if (hogar == null) {
             return error("Debe seleccionar un hogar.");
         }
-        for (PuntoConsumo p : hogar.obtenerPuntos()) {
-            if (p.getId() == idPunto) {
-                hogar.obtenerPuntos().remove(p);
-                return true;
-            }
+        PuntoConsumo punto = buscarPunto(hogar, idPunto);
+        if (punto != null) {
+            return hogar.eliminarPunto(punto);
         }
         return error("No se encontró el artefacto seleccionado.");
     }
@@ -138,16 +148,4 @@ public class GestorPuntosConsumo {
         return punto.calcularPorcentajeImpacto(calcularTotalMensualM3(hogar));
     }
 
-    // ---------- Manejo de errores ----------
-
-    /** Devuelve el mensaje del último error de validación (para mostrarlo con JOptionPane en la interfaz). */
-    public String getMensajeError() {
-        return mensajeError;
-    }
-
-    /** Guarda el mensaje de error y devuelve false, así los métodos pueden escribir "return error(...)". */
-    private boolean error(String mensaje) {
-        mensajeError = mensaje;
-        return false;
-    }
 }

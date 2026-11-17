@@ -4,7 +4,6 @@ import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -18,8 +17,8 @@ import negocio.GestorHogares;
 
 /**
  * Pestaña "Ideal vs real": compara el consumo real diario de la vivienda seleccionada con el
- * consumo ideal de la OMS (100 L por persona al día) en el periodo que elija el usuario.
- * El cálculo lo hace GestorHogares.comparar(); aquí solo se piden las fechas y se muestra el resultado.
+ * consumo ideal configurado por persona al día en el periodo que elija el usuario.
+ * La referencia por persona es configurable y comienza en 100 L/día.
  */
 public class PanelIdealReal extends PanelBase {
 
@@ -30,6 +29,7 @@ public class PanelIdealReal extends PanelBase {
     private final SelectorHogar selector;
     private final JTextField txtDesde;
     private final JTextField txtHasta;
+    private final JTextField txtReferencia;
     private final JTextArea areaResumen;
 
     /** Arma la pantalla: campos de fecha, botón "Comparar" y el cuadro del resultado. */
@@ -44,11 +44,14 @@ public class PanelIdealReal extends PanelBase {
         JPanel controles = new JPanel(new FlowLayout(FlowLayout.LEFT));
         txtDesde = new JTextField(LocalDate.now().minusDays(7).toString(), 10);
         txtHasta = new JTextField(LocalDate.now().toString(), 10);
-        JButton btnComparar = new JButton("Comparar consumo real vs ideal (OMS 100 L/persona/día)");
+        txtReferencia = new JTextField("100", 5);
+        JButton btnComparar = new JButton("Comparar consumo real vs ideal");
         controles.add(new JLabel("Desde (AAAA-MM-DD):"));
         controles.add(txtDesde);
         controles.add(new JLabel("Hasta (AAAA-MM-DD):"));
         controles.add(txtHasta);
+        controles.add(new JLabel("Referencia (L/persona/día):"));
+        controles.add(txtReferencia);
         controles.add(btnComparar);
         btnComparar.addActionListener(e -> calcular());
 
@@ -74,15 +77,20 @@ public class PanelIdealReal extends PanelBase {
 
         LocalDate desde;
         LocalDate hasta;
+        double referencia;
         try {
-            desde = LocalDate.parse(txtDesde.getText().trim());
-            hasta = LocalDate.parse(txtHasta.getText().trim());
-        } catch (DateTimeParseException e) {
-            areaResumen.setText("Fecha inválida. Use el formato AAAA-MM-DD (por ejemplo 2026-11-05).");
+            desde = LectorEntradas.leerFecha(txtDesde.getText(),
+                    "Fecha inválida. Use el formato AAAA-MM-DD (por ejemplo 2026-11-05).");
+            hasta = LectorEntradas.leerFecha(txtHasta.getText(),
+                    "Fecha inválida. Use el formato AAAA-MM-DD (por ejemplo 2026-11-05).");
+            referencia = LectorEntradas.leerDecimal(txtReferencia.getText(),
+                    "El consumo de referencia por persona debe ser un número.");
+        } catch (IllegalArgumentException e) {
+            areaResumen.setText(e.getMessage());
             return;
         }
 
-        ComparacionConsumo comparacion = gestorHogares.comparar(hogar, desde, hasta);
+        ComparacionConsumo comparacion = gestorHogares.comparar(hogar, desde, hasta, referencia);
         if (comparacion == null) {
             areaResumen.setText(gestorHogares.getMensajeError());
             return;

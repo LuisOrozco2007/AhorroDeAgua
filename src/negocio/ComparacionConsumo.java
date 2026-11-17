@@ -27,13 +27,14 @@ public final class ComparacionConsumo {
     private final LocalDate hasta;
     private final int lecturasUsadas;
     private final double dias;
+    private final double referenciaPorPersona;
     private final double ideal;
     private final OptionalDouble real;
 
     /** Constructor de paquete: solo las clases de "negocio" pueden crear una comparación. */
     ComparacionConsumo(Hogar hogar, LocalDate desde, LocalDate hasta,
                        int lecturasUsadas, double dias,
-                       double ideal, OptionalDouble real) {
+                       double referenciaPorPersona, double ideal, OptionalDouble real) {
         this.responsable = hogar.getNombreResponsable();
         this.habitantes = hogar.getHabitantes();
         this.codigoMedidor = hogar.getCodigoMedidor();
@@ -41,11 +42,12 @@ public final class ComparacionConsumo {
         this.hasta = hasta;
         this.lecturasUsadas = lecturasUsadas;
         this.dias = dias;
+        this.referenciaPorPersona = referenciaPorPersona;
         this.ideal = ideal;
         this.real = real;
     }
 
-    /** Consumo ideal diario en litros (100 L por persona). */
+    /** Consumo ideal diario en litros según la referencia elegida por persona. */
     public double getIdeal() {
         return ideal;
     }
@@ -94,7 +96,7 @@ public final class ComparacionConsumo {
         texto.append("Periodo: ").append(periodo)
                 .append(" | lecturas usadas: ").append(lecturasUsadas).append('\n');
         texto.append(String.format(Locale.US,
-                "Consumo ideal diario (OMS 100 L/persona): %.2f L/día%n", ideal));
+                "Consumo ideal diario (%.2f L/persona): %.2f L/día%n", referenciaPorPersona, ideal));
         if (real.isPresent()) {
             texto.append(String.format(Locale.US,
                     "Consumo real promedio (%.2f días): %.2f L/día%n", dias, real.getAsDouble()));

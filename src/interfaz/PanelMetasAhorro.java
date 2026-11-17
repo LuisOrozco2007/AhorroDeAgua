@@ -141,7 +141,26 @@ public class PanelMetasAhorro extends PanelBase {
                     "Error de validación", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        boolean ok = gestorMetas.crear(hogar, txtInicio.getText(), txtFin.getText(), txtReduccion.getText());
+        LocalDate inicio;
+        LocalDate fin;
+        double reduccion;
+        try {
+            if (txtInicio.getText().trim().isEmpty() || txtFin.getText().trim().isEmpty()
+                    || txtReduccion.getText().trim().isEmpty()) {
+                throw new IllegalArgumentException("Todos los campos son obligatorios.");
+            }
+            inicio = LectorEntradas.leerFecha(txtInicio.getText(),
+                    "Fecha de inicio inválida. Use el formato AAAA-MM-DD.");
+            fin = LectorEntradas.leerFecha(txtFin.getText(),
+                    "Fecha fin inválida. Use el formato AAAA-MM-DD.");
+            reduccion = LectorEntradas.leerDecimal(txtReduccion.getText(),
+                    "El porcentaje de reducción debe ser un número (por ejemplo 15).");
+        } catch (IllegalArgumentException e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(),
+                    "Error de validación", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        boolean ok = gestorMetas.crear(hogar, inicio, fin, reduccion);
         if (ok) {
             JOptionPane.showMessageDialog(this, "Meta de ahorro establecida correctamente.",
                     "Meta creada", JOptionPane.INFORMATION_MESSAGE);
@@ -173,7 +192,7 @@ public class PanelMetasAhorro extends PanelBase {
         double real = gestorHogares.calcularConsumoRealDiario(hogar);
 
         for (MetaAhorro m : hogar.obtenerMetas()) {
-            String estado = gestorMetas.evaluar(m, real);
+            String estado = m.evaluar(real);
             modeloTabla.addRow(new Object[]{
                 m.getId(),
                 m.getInicio().toString(),

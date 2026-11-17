@@ -1,5 +1,9 @@
 package negocio;
 
+import java.time.LocalDate;
+import java.util.Collections;
+import java.util.List;
+import java.util.OptionalDouble;
 import modelo.AlertaFuga;
 import modelo.Hogar;
 import modelo.LecturaMedidor;
@@ -11,19 +15,15 @@ import modelo.PruebaFuga;
  * por el medidor). Si lo supera, el estado pasa a "Posible fuga" y se crea una
  * AlertaFuga con recomendaciones automáticas.
  */
-public class GestorFugas {
+public class GestorFugas extends GestorBase {
 
     // contadorPruebas y contadorAlertas: dan un ID único a cada prueba y a cada alerta nueva
-    // mensajeError: guarda el texto del último error de validación
     private int contadorPruebas;
     private int contadorAlertas;
-    private String mensajeError;
-
     /** Crea el gestor con los contadores de ID en 1 y sin mensaje de error. */
     public GestorFugas() {
         contadorPruebas = 1;
         contadorAlertas = 1;
-        mensajeError = "";
     }
 
     /**
@@ -32,62 +32,17 @@ public class GestorFugas {
      * (el mensaje se obtiene con getMensajeError()).
      */
     public PruebaFuga ejecutarPrueba(Hogar hogar, LecturaMedidor inicial, LecturaMedidor fin,
-                                     String limiteTxt, boolean sinUsoConfirmado) {
+                                     double limite, boolean sinUsoConfirmado) {
         // Validaciones de los datos recibidos
         if (hogar == null) {
             error("Debe seleccionar un hogar.");
             return null;
         }
-        if (inicial == null || fin == null) {
-            error("Debe seleccionar la lectura inicial y la lectura final.\n"
-                    + "Si el hogar tiene menos de dos lecturas, registre más en la pestaña Lecturas.");
-            return null;
-        }
-        if (inicial == fin) {
-            error("La lectura inicial y la final deben ser distintas.");
-            return null;
-        }
-        if (!fin.getFechaHora().isAfter(inicial.getFechaHora())) {
-            error("La lectura final debe ser posterior a la lectura inicial.");
-            return null;
-        }
-        if (limiteTxt.trim().isEmpty()) {
-            error("Debe ingresar el límite de consumo nocturno en litros.");
-            return null;
-        }
-
-        // Conversión y validación del límite ingresado
-        double limite;
-        try {
-            limite = Double.parseDouble(limiteTxt.trim().replace(',', '.'));
-        } catch (NumberFormatException e) {
-            error("El límite debe ser un número (por ejemplo 5.0).");
-            return null;
-        }
-        if (Double.isNaN(limite) || Double.isInfinite(limite) || limite < 0) {
-            error("El límite de consumo no puede ser negativo.");
-            return null;
-        }
-        if (limite > PruebaFuga.TOLERANCIA_LITROS) {
-            error("En la madrugada el consumo debe ser casi cero. El límite no puede superar "
-                    + PruebaFuga.TOLERANCIA_LITROS + " L (tolerancia del medidor).");
-            return null;
-        }
-        if (!sinUsoConfirmado) {
-            error("Para ejecutar la prueba debe confirmar que no se usó agua en la vivienda durante el periodo.");
-            return null;
-        }
-
-        // Se crea la prueba y se revisa que cumpla el criterio nocturno
+        // La prueba contiene las reglas para validar sus lecturas y el periodo nocturno.
         PruebaFuga prueba = new PruebaFuga(contadorPruebas, inicial, fin, sinUsoConfirmado, limite);
-        if (!prueba.finalEnMadrugada()) {
-            error("La lectura final debe ser de la madrugada (entre 00:00 y "
-                    + String.format("%02d:00", PruebaFuga.HORA_FIN_MADRUGADA) + ").");
-            return null;
-        }
-        if (prueba.calcularHoras() > PruebaFuga.DURACION_MAXIMA_HORAS) {
-            error("Una prueba nocturna no puede durar más de " + (int) PruebaFuga.DURACION_MAXIMA_HORAS
-                    + " horas. Elija una lectura inicial de la noche anterior (por ejemplo 23:00).");
+        String motivo = prueba.motivoInvalidez();
+        if (motivo != null) {
+            error(motivo);
             return null;
         }
         contadorPruebas++;
@@ -149,20 +104,64 @@ public class GestorFugas {
             return error("Escriba la acción realizada para poder cerrar la alerta.");
         }
         alerta.registrarAccion(accion.trim());
-        alerta.cerrar(accion.trim());
+        alerta.cerrar();
         return true;
     }
 
-    // ---------- Manejo de errores ----------
+    /**
+     * Compara el consumo diario promedio del periodo con el promedio previo al periodo.
+     * Este análisis informa el resultado y no crea una alerta.
+     */
+    public ComparacionHistorica analizarConsumoHistorico(Hogar hogar, LocalDate desde,
+                                                          LocalDate hasta, double factorAumento) {
+        if (hogar == null) {
+            error("Debe seleccionar un hogar.");
+            return null;
+        }
+        if (desde == null || hasta == null) {
+            error("Debe indicar las fechas desde y hasta.");
+            return null;
+        }
+        if (desde.isAfter(hasta)) {
+            error("La fecha «Desde» no puede ser posterior a la fecha «Hasta».");
+            return null;
+        }
+        if (Double.isNaN(factorAumento) || Double.isInfinite(factorAumento) || factorAumento <= 1) {
+            error("El factor de aumento debe ser mayor que 1.");
+            return null;
+        }
 
-    /** Devuelve el mensaje del último error de validación (para mostrarlo con JOptionPane en la interfaz). */
-    public String getMensajeError() {
-        return mensajeError;
+        List<LecturaMedidor> lecturasPeriodo = CalculadoraConsumo.lecturasEnRango(hogar, desde, hasta);
+        List<LecturaMedidor> lecturasHistoricas = desde.equals(LocalDate.MIN)
+                ? Collections.<LecturaMedidor>emptyList()
+                : CalculadoraConsumo.lecturasEnRango(hogar, null, desde.minusDays(1));
+        OptionalDouble consumoPeriodo = CalculadoraConsumo.consumoRealDiario(lecturasPeriodo);
+        OptionalDouble promedioHistorico = CalculadoraConsumo.consumoRealDiario(lecturasHistoricas);
+
+        if (!consumoPeriodo.isPresent() || !promedioHistorico.isPresent()) {
+            String motivo;
+            if (!consumoPeriodo.isPresent() && !promedioHistorico.isPresent()) {
+                motivo = "Se necesitan al menos 2 lecturas válidas dentro del periodo y 2 anteriores a él.";
+            } else if (!consumoPeriodo.isPresent()) {
+                motivo = "Se necesitan al menos 2 lecturas válidas dentro del periodo.";
+            } else {
+                motivo = "Se necesitan al menos 2 lecturas válidas anteriores al periodo.";
+            }
+            return new ComparacionHistorica(ComparacionHistorica.DATOS_INSUFICIENTES,
+                    consumoPeriodo, promedioHistorico, factorAumento, motivo);
+        }
+
+        double consumo = consumoPeriodo.getAsDouble();
+        double historico = promedioHistorico.getAsDouble();
+        if (consumo > historico * factorAumento) {
+            String motivo = String.format("El consumo del periodo supera %.2f veces el promedio histórico.",
+                    factorAumento);
+            return new ComparacionHistorica(ComparacionHistorica.POSIBLE_FUGA,
+                    consumoPeriodo, promedioHistorico, factorAumento, motivo);
+        }
+        return new ComparacionHistorica(ComparacionHistorica.NORMAL, consumoPeriodo,
+                promedioHistorico, factorAumento,
+                "El consumo del periodo no supera el umbral de aumento configurado.");
     }
 
-    /** Guarda el mensaje de error y devuelve false, así los métodos pueden escribir "return error(...)". */
-    private boolean error(String mensaje) {
-        mensajeError = mensaje;
-        return false;
-    }
 }

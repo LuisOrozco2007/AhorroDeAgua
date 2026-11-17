@@ -6,7 +6,7 @@ import java.time.LocalDate;
  * Meta de ahorro de agua de un hogar. Se define con un porcentaje de reducción
  * sobre el consumo ideal (referencia de la OMS: 100 L por persona al día).
  */
-public class MetaAhorro {
+public class MetaAhorro extends EntidadBase {
 
     // Posibles estados de la meta
     public static final String CUMPLIDA = "Meta cumplida";
@@ -15,7 +15,6 @@ public class MetaAhorro {
     public static final String SIN_DATOS = "Sin datos";
 
     // Atributos privados (encapsulamiento)
-    private int id;
     private LocalDate inicio;
     private LocalDate fin;
     private double baseLPersonaDia;        // Consumo de referencia por persona (100 L)
@@ -27,7 +26,7 @@ public class MetaAhorro {
     /** Crea una meta. Empieza con el estado "Sin datos" hasta que se evalúe. */
     public MetaAhorro(int id, LocalDate inicio, LocalDate fin, double baseLPersonaDia,
                       double reduccionPorcentaje, int habitantesPeriodoBase) {
-        this.id = id;
+        super(id);
         this.inicio = inicio;
         this.fin = fin;
         this.baseLPersonaDia = baseLPersonaDia;
@@ -73,10 +72,6 @@ public class MetaAhorro {
     }
 
     // ---------- Getters y setters ----------
-    public int getId() {
-        return id;
-    }
-
     public LocalDate getInicio() {
         return inicio;
     }

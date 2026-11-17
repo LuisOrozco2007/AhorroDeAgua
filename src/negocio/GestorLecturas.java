@@ -4,8 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
+import java.util.List;
 import modelo.Hogar;
 import modelo.LecturaMedidor;
 import modelo.PruebaFuga;
@@ -14,41 +13,31 @@ import modelo.PruebaFuga;
  * RF5 y RF6: registra, consulta, actualiza y elimina las lecturas del medidor.
  * Regla clave: una lectura nunca puede ser menor que la anterior (el medidor siempre acumula).
  */
-public class GestorLecturas {
+public class GestorLecturas extends GestorBase {
 
     // contadorId: da un número de ID único a cada elemento que se registra
-    // mensajeError: guarda el texto del último error de validación
     private int contadorId;
-    private String mensajeError;
-
     /** Crea el gestor con el contador de ID en 1 y sin mensaje de error. */
     public GestorLecturas() {
         contadorId = 1;
-        mensajeError = "";
     }
 
     // ---------- RF5: Registrar lectura ----------
 
     /**
-     * Registra una lectura nueva. Valida que no haya campos vacíos, el formato de la fecha (AAAA-MM-DD)
-     * y de la hora (HH:MM), que el valor sea un número no negativo y que no sea menor a la lectura anterior.
+     * Registra una lectura nueva. Valida el valor y que no sea menor a la lectura anterior.
      * Devuelve false (y guarda el mensaje de error) si algo falla.
      */
-    public boolean registrar(Hogar hogar, String fechaTxt, String horaTxt, String valorTxt) {
+    public boolean registrar(Hogar hogar, LocalDate fecha, LocalTime hora, double valor) {
         if (hogar == null) {
             return error("Debe seleccionar un hogar.");
         }
-        if (fechaTxt.trim().isEmpty() || horaTxt.trim().isEmpty() || valorTxt.trim().isEmpty()) {
-            return error("Todos los campos son obligatorios (fecha, hora y valor del medidor).");
+        LocalDateTime fechaHora = LocalDateTime.of(fecha, hora);
+        if (Double.isNaN(valor) || Double.isInfinite(valor)) {
+            return error("El valor del medidor no es válido.");
         }
-
-        LocalDateTime fechaHora = convertirFechaHora(fechaTxt, horaTxt);
-        if (fechaHora == null) {
-            return false;   // el mensaje ya quedó guardado
-        }
-        double valor = convertirValor(valorTxt);
         if (valor < 0) {
-            return false;
+            return error("El valor del medidor no puede ser negativo.");
         }
         if (!validarOrden(hogar, fechaHora, valor, -1)) {
             return false;
@@ -64,38 +53,26 @@ public class GestorLecturas {
     // ---------- RF6: Consultar, actualizar y eliminar ----------
 
     /** Devuelve las lecturas del hogar dentro del rango de fechas (null = sin límite). */
-    public ArrayList<LecturaMedidor> consultar(Hogar hogar, LocalDate desde, LocalDate hasta) {
-        ArrayList<LecturaMedidor> resultado = new ArrayList<>();
-        for (LecturaMedidor l : hogar.obtenerLecturas()) {
-            boolean despuesDeDesde = (desde == null) || !l.getFecha().isBefore(desde);
-            boolean antesDeHasta = (hasta == null) || !l.getFecha().isAfter(hasta);
-            if (despuesDeDesde && antesDeHasta) {
-                resultado.add(l);
-            }
-        }
-        return resultado;
+    public List<LecturaMedidor> consultar(Hogar hogar, LocalDate desde, LocalDate hasta) {
+        return CalculadoraConsumo.lecturasEnRango(hogar, desde, hasta);
     }
 
     /** Modifica una lectura ya registrada. No se puede si la lectura se usa en una prueba de fuga. */
-    public boolean actualizar(Hogar hogar, int idLectura, String fechaTxt, String horaTxt, String valorTxt) {
+    public boolean actualizar(Hogar hogar, int idLectura, LocalDate fecha, LocalTime hora, double valor) {
         LecturaMedidor lectura = buscarPorId(hogar, idLectura);
         if (lectura == null) {
             return error("Seleccione una lectura de la tabla.");
-        }
-        if (fechaTxt.trim().isEmpty() || horaTxt.trim().isEmpty() || valorTxt.trim().isEmpty()) {
-            return error("Todos los campos son obligatorios (fecha, hora y valor del medidor).");
         }
         if (estaUsadaEnPrueba(hogar, lectura)) {
             return error("Esta lectura se usa en una prueba de fuga y no se puede modificar.");
         }
 
-        LocalDateTime fechaHora = convertirFechaHora(fechaTxt, horaTxt);
-        if (fechaHora == null) {
-            return false;
+        LocalDateTime fechaHora = LocalDateTime.of(fecha, hora);
+        if (Double.isNaN(valor) || Double.isInfinite(valor)) {
+            return error("El valor del medidor no es válido.");
         }
-        double valor = convertirValor(valorTxt);
         if (valor < 0) {
-            return false;
+            return error("El valor del medidor no puede ser negativo.");
         }
         if (!validarOrden(hogar, fechaHora, valor, idLectura)) {
             return false;
@@ -117,14 +94,14 @@ public class GestorLecturas {
         if (estaUsadaEnPrueba(hogar, lectura)) {
             return error("Esta lectura se usa en una prueba de fuga y no se puede eliminar.");
         }
-        hogar.obtenerLecturas().remove(lectura);
+        hogar.eliminarLectura(lectura);
         recalcularObservaciones(hogar);
         return true;
     }
 
     /** Litros consumidos desde la lectura anterior. Devuelve -1 si es la primera lectura. */
     public double consumoPeriodoLitros(Hogar hogar, LecturaMedidor lectura) {
-        ArrayList<LecturaMedidor> lista = hogar.obtenerLecturas();
+        List<LecturaMedidor> lista = hogar.obtenerLecturas();
         int posicion = lista.indexOf(lectura);
         if (posicion <= 0) {
             return -1;
@@ -134,7 +111,7 @@ public class GestorLecturas {
 
     /** Actualiza la observación de cada lectura ("Lectura inicial" o "Consumo de X L") después de un cambio. */
     public void recalcularObservaciones(Hogar hogar) {
-        ArrayList<LecturaMedidor> lista = hogar.obtenerLecturas();
+        List<LecturaMedidor> lista = hogar.obtenerLecturas();
         for (int i = 0; i < lista.size(); i++) {
             if (i == 0) {
                 lista.get(i).actualizarObservacion("Lectura inicial");
@@ -170,45 +147,6 @@ public class GestorLecturas {
         return false;
     }
 
-    /** Convierte fecha (AAAA-MM-DD) y hora (HH:MM). Devuelve null (y guarda el error) si el formato es incorrecto. */
-    private LocalDateTime convertirFechaHora(String fechaTxt, String horaTxt) {
-        LocalDate fecha;
-        LocalTime hora;
-        try {
-            fecha = LocalDate.parse(fechaTxt.trim());
-        } catch (DateTimeParseException e) {
-            error("Fecha inválida. Use el formato AAAA-MM-DD (por ejemplo 2026-11-05).");
-            return null;
-        }
-        try {
-            hora = LocalTime.parse(horaTxt.trim(), DateTimeFormatter.ofPattern("HH:mm"));
-        } catch (DateTimeParseException e) {
-            error("Hora inválida. Use el formato HH:MM (por ejemplo 07:30).");
-            return null;
-        }
-        return LocalDateTime.of(fecha, hora);
-    }
-
-    /** Convierte el valor del medidor. Devuelve -1 (y guarda el error) si no es válido. */
-    private double convertirValor(String valorTxt) {
-        double valor;
-        try {
-            valor = Double.parseDouble(valorTxt.trim().replace(',', '.'));
-        } catch (NumberFormatException e) {
-            error("El valor del medidor debe ser un número (por ejemplo 120.450).");
-            return -1;
-        }
-        if (Double.isNaN(valor) || Double.isInfinite(valor)) {
-            error("El valor del medidor no es válido.");
-            return -1;
-        }
-        if (valor < 0) {
-            error("El valor del medidor no puede ser negativo.");
-            return -1;
-        }
-        return valor;
-    }
-
     /**
      * Regla principal: la lectura no puede ser menor que una lectura anterior ni mayor que una
      * lectura posterior (el medidor siempre acumula), y no puede repetir la fecha y hora de otra.
@@ -235,16 +173,4 @@ public class GestorLecturas {
         return true;
     }
 
-    // ---------- Manejo de errores ----------
-
-    /** Devuelve el mensaje del último error de validación (para mostrarlo con JOptionPane en la interfaz). */
-    public String getMensajeError() {
-        return mensajeError;
-    }
-
-    /** Guarda el mensaje de error y devuelve false, así los métodos pueden escribir "return error(...)". */
-    private boolean error(String mensaje) {
-        mensajeError = mensaje;
-        return false;
-    }
 }

@@ -1,64 +1,39 @@
 package negocio;
 
-import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.OptionalDouble;
 import modelo.Hogar;
 import modelo.LecturaMedidor;
 
 /**
- * RF1 y RF2: administra los hogares (registrar, consultar, actualizar habitantes y eliminar)
+ * RF1 y RF2: administra los hogares (registrar, consultar, actualizar y eliminar)
  * y compara el consumo ideal con el consumo real.
  */
-public class GestorHogares {
-
-    // Consumo ideal por persona al día (referencia de la OMS: 100 litros)
-    public static final double LITROS_POR_PERSONA_DIA = 100.0;
+public class GestorHogares extends GestorBase {
 
     // hogares: lista de viviendas registradas
-    // mensajeError: guarda el texto del último error de validación
-    private ArrayList<Hogar> hogares;
-    private String mensajeError;
-
+    private List<Hogar> hogares;
     /** Crea el gestor con la lista de hogares vacía. */
     public GestorHogares() {
         hogares = new ArrayList<>();
-        mensajeError = "";
     }
 
     // ---------- RF1: Gestionar viviendas ----------
 
     /**
-     * Registra un hogar nuevo. Valida que no haya campos vacíos, que el ID y los habitantes sean
-     * números enteros, que los habitantes sean al menos 1 y que no se repitan el ID ni el código de medidor.
+     * Registra un hogar nuevo. Valida que el ID y los habitantes sean válidos y que no se repitan
+     * el ID ni el código de medidor.
      * Devuelve false (y guarda el mensaje de error) si algo falla.
      */
-    public boolean registrar(String idTxt, String responsable, String barrio,
-                             String medidor, String habitantesTxt) {
+    public boolean registrar(int id, String responsable, String direccion, String medidor, int habitantes) {
 
-        // Campos vacíos
-        if (idTxt.trim().isEmpty() || responsable.trim().isEmpty() || barrio.trim().isEmpty()
-                || medidor.trim().isEmpty() || habitantesTxt.trim().isEmpty()) {
+        if (responsable == null || direccion == null || medidor == null
+                || responsable.trim().isEmpty() || direccion.trim().isEmpty() || medidor.trim().isEmpty()) {
             return error("Todos los campos son obligatorios.");
         }
-
-        // Conversión de los números (si el texto no es un número, se avisa del error)
-        int id;
-        int habitantes;
-        try {
-            id = Integer.parseInt(idTxt.trim());
-        } catch (NumberFormatException e) {
-            return error("El ID debe ser un número entero.");
-        }
-        try {
-            habitantes = Integer.parseInt(habitantesTxt.trim());
-        } catch (NumberFormatException e) {
-            return error("El número de habitantes debe ser un número entero.");
-        }
-
-        // Reglas de negocio
         if (id <= 0) {
             return error("El ID debe ser mayor que 0.");
         }
@@ -72,35 +47,28 @@ public class GestorHogares {
             return error("Ya existe un hogar con ese código de medidor.");
         }
 
-        hogares.add(new Hogar(id, responsable.trim(), barrio.trim(), medidor.trim(), habitantes));
+        hogares.add(new Hogar(id, responsable.trim(), direccion.trim(), medidor.trim(), habitantes));
         return true;
     }
 
-    /** Cambia el número de habitantes de un hogar existente (se busca por su ID). */
-    public boolean actualizarHabitantes(String idTxt, String habitantesTxt) {
-        if (idTxt.trim().isEmpty() || habitantesTxt.trim().isEmpty()) {
-            return error("Debe indicar el ID del hogar y el nuevo número de habitantes.");
-        }
-        int id;
-        int habitantes;
-        try {
-            id = Integer.parseInt(idTxt.trim());
-        } catch (NumberFormatException e) {
-            return error("El ID debe ser un número entero.");
-        }
-        try {
-            habitantes = Integer.parseInt(habitantesTxt.trim());
-        } catch (NumberFormatException e) {
-            return error("El número de habitantes debe ser un número entero.");
-        }
-        if (habitantes < 1) {
-            return error("El número de habitantes debe ser mayor o igual a 1.");
+    /** Actualiza los datos de un hogar existente, sin modificar sus metas. */
+    public boolean actualizar(int id, String responsable, String direccion, String medidor, int habitantes) {
+        if (responsable == null || direccion == null || medidor == null
+                || responsable.trim().isEmpty() || direccion.trim().isEmpty() || medidor.trim().isEmpty()) {
+            return error("Todos los campos son obligatorios.");
         }
         Hogar hogar = buscarPorId(id);
         if (hogar == null) {
             return error("No existe un hogar con el ID " + id + ".");
         }
-        hogar.actualizarHabitantes(habitantes);
+        if (habitantes < 1) {
+            return error("El número de habitantes debe ser mayor o igual a 1.");
+        }
+        Hogar medidorExistente = buscarPorMedidor(medidor.trim());
+        if (medidorExistente != null && medidorExistente != hogar) {
+            return error("Ya existe un hogar con ese código de medidor.");
+        }
+        hogar.actualizarDatos(responsable.trim(), direccion.trim(), medidor.trim(), habitantes);
         return true;
     }
 
@@ -135,15 +103,20 @@ public class GestorHogares {
     }
 
     /** Devuelve la lista de hogares registrados. */
-    public ArrayList<Hogar> getHogares() {
-        return hogares;
+    public List<Hogar> getHogares() {
+        return Collections.unmodifiableList(hogares);
     }
 
     // ---------- RF2: Consumo ideal vs consumo real ----------
 
-    /** Consumo ideal diario (litros) = habitantes * 100 L. */
+    /** Consumo ideal diario del hogar en litros. */
     public double calcularConsumoIdeal(Hogar hogar) {
-        return hogar.getHabitantes() * LITROS_POR_PERSONA_DIA;
+        return hogar.calcularConsumoIdeal();
+    }
+
+    /** Consumo ideal diario con el valor de referencia elegido, en litros por persona. */
+    public double calcularConsumoIdeal(Hogar hogar, double referenciaPorPersona) {
+        return hogar.getHabitantes() * referenciaPorPersona;
     }
 
     /**
@@ -151,20 +124,8 @@ public class GestorHogares {
      * del medidor del hogar. Devuelve -1 si no hay datos suficientes.
      */
     public double calcularConsumoRealDiario(Hogar hogar) {
-        ArrayList<LecturaMedidor> lecturas = hogar.obtenerLecturas();
-        if (lecturas.size() < 2) {
-            return -1;
-        }
-        LecturaMedidor primera = lecturas.get(0);
-        LecturaMedidor ultima = lecturas.get(lecturas.size() - 1);
-
-        long minutos = Duration.between(primera.getFechaHora(), ultima.getFechaHora()).toMinutes();
-        if (minutos <= 0) {
-            return -1;
-        }
-        double litros = primera.litrosHasta(ultima);
-        double dias = minutos / 1440.0;   // 1440 minutos tiene un día
-        return litros / dias;
+        OptionalDouble real = CalculadoraConsumo.consumoRealDiario(hogar.obtenerLecturas());
+        return real.isPresent() ? real.getAsDouble() : -1;
     }
 
     /**
@@ -173,8 +134,19 @@ public class GestorHogares {
      * (el mensaje queda en getMensajeError()).
      */
     public ComparacionConsumo comparar(Hogar hogar, LocalDate desde, LocalDate hasta) {
+        return comparar(hogar, desde, hasta, Hogar.LITROS_POR_PERSONA_DIA);
+    }
+
+    /** Compara consumo real e ideal usando la referencia indicada en litros por persona al día. */
+    public ComparacionConsumo comparar(Hogar hogar, LocalDate desde, LocalDate hasta,
+                                       double referenciaPorPersona) {
         if (hogar == null) {
             error("Debe seleccionar un hogar.");
+            return null;
+        }
+        if (Double.isNaN(referenciaPorPersona) || Double.isInfinite(referenciaPorPersona)
+                || referenciaPorPersona <= 0) {
+            error("El consumo de referencia por persona debe ser mayor que 0.");
             return null;
         }
         if (desde != null && hasta != null && desde.isAfter(hasta)) {
@@ -183,9 +155,10 @@ public class GestorHogares {
         }
         List<LecturaMedidor> lecturas = CalculadoraConsumo.lecturasEnRango(hogar, desde, hasta);
         double dias = CalculadoraConsumo.dias(lecturas);
-        double ideal = calcularConsumoIdeal(hogar);
+        double ideal = calcularConsumoIdeal(hogar, referenciaPorPersona);
         OptionalDouble real = CalculadoraConsumo.consumoRealDiario(lecturas);
-        return new ComparacionConsumo(hogar, desde, hasta, lecturas.size(), dias, ideal, real);
+        return new ComparacionConsumo(hogar, desde, hasta, lecturas.size(), dias,
+                referenciaPorPersona, ideal, real);
     }
 
     /** Diferencia entre el consumo real y el ideal (positivo = se gasta de más). Es 0 si no hay datos. */
@@ -197,28 +170,16 @@ public class GestorHogares {
         return real - calcularConsumoIdeal(hogar);
     }
 
-    /** Devuelve "Eficiente", "Excesivo" o "Sin datos". */
+    /** Devuelve el estado del consumo con los nombres usados en la comparación. */
     public String obtenerEstadoConsumo(Hogar hogar) {
         double real = calcularConsumoRealDiario(hogar);
         if (real < 0) {
-            return "Sin datos";
+            return ComparacionConsumo.SIN_DATOS;
         }
         if (real <= calcularConsumoIdeal(hogar)) {
-            return "Eficiente";
+            return ComparacionConsumo.EFICIENTE;
         }
-        return "Excesivo";
+        return ComparacionConsumo.EXCESIVO;
     }
 
-    // ---------- Manejo de errores ----------
-
-    /** Devuelve el mensaje del último error de validación (para mostrarlo con JOptionPane en la interfaz). */
-    public String getMensajeError() {
-        return mensajeError;
-    }
-
-    /** Guarda el mensaje de error y devuelve false, así los métodos pueden escribir "return error(...)". */
-    private boolean error(String mensaje) {
-        mensajeError = mensaje;
-        return false;
-    }
 }

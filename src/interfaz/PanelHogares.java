@@ -30,7 +30,7 @@ public class PanelHogares extends PanelBase {
     // Campos del formulario
     private JTextField txtId;
     private JTextField txtResponsable;
-    private JTextField txtBarrio;
+    private JTextField txtDireccion;
     private JTextField txtMedidor;
     private JTextField txtHabitantes;
 
@@ -66,7 +66,7 @@ public class PanelHogares extends PanelBase {
 
         txtId = new JTextField();
         txtResponsable = new JTextField();
-        txtBarrio = new JTextField();
+        txtDireccion = new JTextField();
         txtMedidor = new JTextField();
         txtHabitantes = new JTextField();
 
@@ -76,8 +76,8 @@ public class PanelHogares extends PanelBase {
         campos.add(txtId);
         campos.add(new JLabel("Nombre del responsable:"));
         campos.add(txtResponsable);
-        campos.add(new JLabel("Barrio:"));
-        campos.add(txtBarrio);
+        campos.add(new JLabel("Dirección:"));
+        campos.add(txtDireccion);
         campos.add(new JLabel("Código de medidor:"));
         campos.add(txtMedidor);
         campos.add(new JLabel("Número de habitantes:"));
@@ -87,7 +87,7 @@ public class PanelHogares extends PanelBase {
 
         // Botones
         JButton btnRegistrar = new JButton("Registrar Hogar");
-        JButton btnActualizar = new JButton("Actualizar Habitantes");
+        JButton btnActualizar = new JButton("Actualizar vivienda");
         JButton btnEliminar = new JButton("Eliminar");
         JButton btnLimpiar = new JButton("Limpiar");
 
@@ -102,7 +102,7 @@ public class PanelHogares extends PanelBase {
 
         // Eventos de los botones
         btnRegistrar.addActionListener(e -> registrarHogar());
-        btnActualizar.addActionListener(e -> actualizarHabitantes());
+        btnActualizar.addActionListener(e -> actualizarVivienda());
         btnEliminar.addActionListener(e -> eliminarHogar());
         btnLimpiar.addActionListener(e -> limpiarCampos());
 
@@ -111,7 +111,7 @@ public class PanelHogares extends PanelBase {
 
     /** Crea la tabla de hogares (no editable). */
     private JScrollPane crearTabla() {
-        String[] columnas = {"ID", "Responsable", "Barrio", "Medidor", "Habitantes", "Estado Consumo"};
+        String[] columnas = {"ID", "Responsable", "Dirección", "Medidor", "Habitantes", "Estado Consumo"};
 
         modeloTabla = new DefaultTableModel(columnas, 0) {
             @Override
@@ -135,8 +135,23 @@ public class PanelHogares extends PanelBase {
 
     /** Botón "Registrar Hogar": el gestor valida los datos; se muestra un mensaje de éxito o de error. */
     private void registrarHogar() {
-        boolean ok = gestorHogares.registrar(txtId.getText(), txtResponsable.getText(),
-                txtBarrio.getText(), txtMedidor.getText(), txtHabitantes.getText());
+        int id;
+        int habitantes;
+        try {
+            if (txtId.getText().trim().isEmpty() || txtResponsable.getText().trim().isEmpty()
+                    || txtDireccion.getText().trim().isEmpty() || txtMedidor.getText().trim().isEmpty()
+                    || txtHabitantes.getText().trim().isEmpty()) {
+                throw new IllegalArgumentException("Todos los campos son obligatorios.");
+            }
+            id = LectorEntradas.leerEntero(txtId.getText(), "El ID debe ser un número entero.");
+            habitantes = LectorEntradas.leerEntero(txtHabitantes.getText(),
+                    "El número de habitantes debe ser un número entero.");
+        } catch (IllegalArgumentException e) {
+            mostrarError(e.getMessage());
+            return;
+        }
+        boolean ok = gestorHogares.registrar(id, txtResponsable.getText(),
+                txtDireccion.getText(), txtMedidor.getText(), habitantes);
         if (ok) {
             JOptionPane.showMessageDialog(this, "Hogar registrado correctamente.",
                     "Registro exitoso", JOptionPane.INFORMATION_MESSAGE);
@@ -148,11 +163,31 @@ public class PanelHogares extends PanelBase {
         }
     }
 
-    /** Botón "Actualizar Habitantes": cambia los habitantes del hogar cuyo ID está en el formulario. */
-    private void actualizarHabitantes() {
-        boolean ok = gestorHogares.actualizarHabitantes(txtId.getText(), txtHabitantes.getText());
+    /** Actualiza todos los datos del hogar que está seleccionado en la tabla. */
+    private void actualizarVivienda() {
+        int fila = tabla.getSelectedRow();
+        if (fila < 0) {
+            mostrarError("Seleccione un hogar de la tabla para actualizarlo.");
+            return;
+        }
+        int id = (Integer) modeloTabla.getValueAt(fila, 0);
+        int habitantes;
+        try {
+            if (txtResponsable.getText().trim().isEmpty()
+                    || txtDireccion.getText().trim().isEmpty() || txtMedidor.getText().trim().isEmpty()
+                    || txtHabitantes.getText().trim().isEmpty()) {
+                throw new IllegalArgumentException("Todos los campos son obligatorios.");
+            }
+            habitantes = LectorEntradas.leerEntero(txtHabitantes.getText(),
+                    "El número de habitantes debe ser un número entero.");
+        } catch (IllegalArgumentException e) {
+            mostrarError(e.getMessage());
+            return;
+        }
+        boolean ok = gestorHogares.actualizar(id, txtResponsable.getText(),
+                txtDireccion.getText(), txtMedidor.getText(), habitantes);
         if (ok) {
-            JOptionPane.showMessageDialog(this, "Número de habitantes actualizado.",
+            JOptionPane.showMessageDialog(this, "Vivienda actualizada correctamente.",
                     "Actualización exitosa", JOptionPane.INFORMATION_MESSAGE);
             actualizarTabla();
             selector.recargar();
@@ -187,7 +222,7 @@ public class PanelHogares extends PanelBase {
     private void limpiarCampos() {
         txtId.setText("");
         txtResponsable.setText("");
-        txtBarrio.setText("");
+        txtDireccion.setText("");
         txtMedidor.setText("");
         txtHabitantes.setText("");
         tabla.clearSelection();
@@ -206,7 +241,7 @@ public class PanelHogares extends PanelBase {
         }
         txtId.setText(String.valueOf(hogar.getId()));
         txtResponsable.setText(hogar.getNombreResponsable());
-        txtBarrio.setText(hogar.getBarrio());
+        txtDireccion.setText(hogar.getDireccion());
         txtMedidor.setText(hogar.getCodigoMedidor());
         txtHabitantes.setText(String.valueOf(hogar.getHabitantes()));
 
@@ -233,7 +268,7 @@ public class PanelHogares extends PanelBase {
             modeloTabla.addRow(new Object[]{
                 h.getId(),
                 h.getNombreResponsable(),
-                h.getBarrio(),
+                h.getDireccion(),
                 h.getCodigoMedidor(),
                 h.getHabitantes(),
                 gestorHogares.obtenerEstadoConsumo(h)
