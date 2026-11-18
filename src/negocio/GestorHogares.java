@@ -16,6 +16,7 @@ public class GestorHogares extends GestorBase {
 
     // hogares: lista de viviendas registradas
     private List<Hogar> hogares;
+
     /** Crea el gestor con la lista de hogares vacía. */
     public GestorHogares() {
         hogares = new ArrayList<>();
@@ -30,8 +31,7 @@ public class GestorHogares extends GestorBase {
      */
     public boolean registrar(int id, String responsable, String direccion, String medidor, int habitantes) {
 
-        if (responsable == null || direccion == null || medidor == null
-                || responsable.trim().isEmpty() || direccion.trim().isEmpty() || medidor.trim().isEmpty()) {
+        if (!validarTextos(responsable, direccion, medidor)) {
             return error("Todos los campos son obligatorios.");
         }
         if (id <= 0) {
@@ -53,8 +53,7 @@ public class GestorHogares extends GestorBase {
 
     /** Actualiza los datos de un hogar existente, sin modificar sus metas. */
     public boolean actualizar(int id, String responsable, String direccion, String medidor, int habitantes) {
-        if (responsable == null || direccion == null || medidor == null
-                || responsable.trim().isEmpty() || direccion.trim().isEmpty() || medidor.trim().isEmpty()) {
+        if (!validarTextos(responsable, direccion, medidor)) {
             return error("Todos los campos son obligatorios.");
         }
         Hogar hogar = buscarPorId(id);
@@ -70,6 +69,13 @@ public class GestorHogares extends GestorBase {
         }
         hogar.actualizarDatos(responsable.trim(), direccion.trim(), medidor.trim(), habitantes);
         return true;
+    }
+
+    private boolean validarTextos(String responsable, String direccion, String medidor) {
+        return responsable != null && direccion != null && medidor != null
+                && !responsable.trim().isEmpty()
+                && !direccion.trim().isEmpty()
+                && !medidor.trim().isEmpty();
     }
 
     /** Elimina un hogar por su ID (junto con todos sus datos). */
@@ -116,7 +122,7 @@ public class GestorHogares extends GestorBase {
 
     /** Consumo ideal diario con el valor de referencia elegido, en litros por persona. */
     public double calcularConsumoIdeal(Hogar hogar, double referenciaPorPersona) {
-        return hogar.getHabitantes() * referenciaPorPersona;
+        return hogar.calcularConsumoIdeal(referenciaPorPersona);
     }
 
     /**

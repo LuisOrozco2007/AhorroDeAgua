@@ -20,7 +20,8 @@ public class GestorFugas extends GestorBase {
     // contadorPruebas y contadorAlertas: dan un ID único a cada prueba y a cada alerta nueva
     private int contadorPruebas;
     private int contadorAlertas;
-    /** Crea el gestor con los contadores de ID en 1 y sin mensaje de error. */
+
+    /** Crea el gestor con los contadores de pruebas y alertas iniciados en 1. */
     public GestorFugas() {
         contadorPruebas = 1;
         contadorAlertas = 1;

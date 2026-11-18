@@ -138,9 +138,7 @@ public class PanelHogares extends PanelBase {
         int id;
         int habitantes;
         try {
-            if (txtId.getText().trim().isEmpty() || txtResponsable.getText().trim().isEmpty()
-                    || txtDireccion.getText().trim().isEmpty() || txtMedidor.getText().trim().isEmpty()
-                    || txtHabitantes.getText().trim().isEmpty()) {
+            if (txtId.getText().trim().isEmpty() || txtHabitantes.getText().trim().isEmpty()) {
                 throw new IllegalArgumentException("Todos los campos son obligatorios.");
             }
             id = LectorEntradas.leerEntero(txtId.getText(), "El ID debe ser un número entero.");
@@ -173,9 +171,7 @@ public class PanelHogares extends PanelBase {
         int id = (Integer) modeloTabla.getValueAt(fila, 0);
         int habitantes;
         try {
-            if (txtResponsable.getText().trim().isEmpty()
-                    || txtDireccion.getText().trim().isEmpty() || txtMedidor.getText().trim().isEmpty()
-                    || txtHabitantes.getText().trim().isEmpty()) {
+            if (txtHabitantes.getText().trim().isEmpty()) {
                 throw new IllegalArgumentException("Todos los campos son obligatorios.");
             }
             habitantes = LectorEntradas.leerEntero(txtHabitantes.getText(),

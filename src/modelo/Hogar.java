@@ -51,7 +51,12 @@ public class Hogar extends EntidadBase {
 
     /** Consumo ideal diario del hogar según la referencia de 100 litros por persona. */
     public double calcularConsumoIdeal() {
-        return habitantes * LITROS_POR_PERSONA_DIA;
+        return calcularConsumoIdeal(LITROS_POR_PERSONA_DIA);
+    }
+
+    /** Consumo ideal diario del hogar con la referencia indicada en litros por persona. */
+    public double calcularConsumoIdeal(double referenciaPorPersona) {
+        return habitantes * referenciaPorPersona;
     }
 
     /** Agrega una lectura a la lista y la deja ordenada por fecha y hora. */

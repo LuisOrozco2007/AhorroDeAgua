@@ -17,7 +17,8 @@ public class GestorLecturas extends GestorBase {
 
     // contadorId: da un número de ID único a cada elemento que se registra
     private int contadorId;
-    /** Crea el gestor con el contador de ID en 1 y sin mensaje de error. */
+
+    /** Crea el gestor con el contador de ID de las lecturas iniciado en 1. */
     public GestorLecturas() {
         contadorId = 1;
     }
@@ -33,11 +34,8 @@ public class GestorLecturas extends GestorBase {
             return error("Debe seleccionar un hogar.");
         }
         LocalDateTime fechaHora = LocalDateTime.of(fecha, hora);
-        if (Double.isNaN(valor) || Double.isInfinite(valor)) {
-            return error("El valor del medidor no es válido.");
-        }
-        if (valor < 0) {
-            return error("El valor del medidor no puede ser negativo.");
+        if (!validarValor(valor)) {
+            return false;
         }
         if (!validarOrden(hogar, fechaHora, valor, -1)) {
             return false;
@@ -68,11 +66,8 @@ public class GestorLecturas extends GestorBase {
         }
 
         LocalDateTime fechaHora = LocalDateTime.of(fecha, hora);
-        if (Double.isNaN(valor) || Double.isInfinite(valor)) {
-            return error("El valor del medidor no es válido.");
-        }
-        if (valor < 0) {
-            return error("El valor del medidor no puede ser negativo.");
+        if (!validarValor(valor)) {
+            return false;
         }
         if (!validarOrden(hogar, fechaHora, valor, idLectura)) {
             return false;
@@ -82,6 +77,16 @@ public class GestorLecturas extends GestorBase {
         lectura.setAcumuladoM3(valor);
         hogar.ordenarLecturas();
         recalcularObservaciones(hogar);
+        return true;
+    }
+
+    private boolean validarValor(double valor) {
+        if (Double.isNaN(valor) || Double.isInfinite(valor)) {
+            return error("El valor del medidor no es válido.");
+        }
+        if (valor < 0) {
+            return error("El valor del medidor no puede ser negativo.");
+        }
         return true;
     }
 

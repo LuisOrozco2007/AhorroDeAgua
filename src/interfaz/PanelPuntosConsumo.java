@@ -182,7 +182,7 @@ public class PanelPuntosConsumo extends PanelBase {
         }
     }
 
-    /** Botón "Agregar Artefacto": el gestor valida los datos; si hay un error se muestra con JOptionPane. */
+    /** Botones "Agregar" y "Actualizar": el gestor valida los datos; si hay un error se muestra con JOptionPane. */
     private void guardarArtefacto(boolean actualizar) {
         Hogar hogar = selector.getHogar();
         if (hogar == null) {
@@ -200,17 +200,6 @@ public class PanelPuntosConsumo extends PanelBase {
         boolean esMinuto = artefacto != null
                 && artefacto.getUnidad().equals(TipoArtefacto.UNIDAD_MINUTO);
         try {
-            if (artefacto == null) {
-                throw new IllegalArgumentException("Debe seleccionar un tipo de artefacto.");
-            }
-            if (txtUbicacion.getText().trim().isEmpty()) {
-                throw new IllegalArgumentException(
-                        "Debe ingresar el nombre o la ubicación del artefacto (por ejemplo: Baño principal).");
-            }
-            if (artefacto.getNombre().equals(CatalogoArtefactos.OTROS)
-                    && txtNombrePersonalizado.getText().trim().isEmpty()) {
-                throw new IllegalArgumentException("Escriba el nombre del artefacto personalizado.");
-            }
             if (txtCaudal.getText().trim().isEmpty() || txtFrecuencia.getText().trim().isEmpty()
                     || (esMinuto && txtDuracion.getText().trim().isEmpty())) {
                 throw new IllegalArgumentException("Todos los campos son obligatorios.");

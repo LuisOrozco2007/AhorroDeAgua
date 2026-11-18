@@ -48,7 +48,7 @@ public class VentanaPrincipal extends JFrame {
         this.gestorFugas = gestorFugas;
         this.gestorMetas = gestorMetas;
 
-        // Selector de vivienda compartido por todas las pestañas
+        // 1. Selector de vivienda compartido por todas las pestañas
         selector = new SelectorHogar(gestorHogares);
 
         // 2. Se crean los paneles

@@ -13,7 +13,8 @@ public class GestorPuntosConsumo extends GestorBase {
 
     // contadorId: da un número de ID único a cada elemento que se registra
     private int contadorId;
-    /** Crea el gestor con el contador de ID en 1 y sin mensaje de error. */
+
+    /** Crea el gestor con el contador de ID de los puntos iniciado en 1. */
     public GestorPuntosConsumo() {
         contadorId = 1;
     }

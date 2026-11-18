@@ -21,6 +21,7 @@ public class AlertaFuga extends EntidadBase {
     // fechaCreacion y fechaCierre: cuándo se creó y cuándo se cerró la alerta
     private String estado;
     private String observacion;
+    private LocalDateTime fechaCreacion;
     private LocalDateTime fechaCierre;
     private String ubicacionSospechada;
     private String accionRealizada;
@@ -31,6 +32,7 @@ public class AlertaFuga extends EntidadBase {
         super(id);
         this.estado = PENDIENTE;
         this.observacion = "";
+        this.fechaCreacion = LocalDateTime.now();
         this.ubicacionSospechada = "";
         this.accionRealizada = "";
         this.recomendaciones = "";
@@ -70,6 +72,10 @@ public class AlertaFuga extends EntidadBase {
 
     public void setObservacion(String observacion) {
         this.observacion = observacion;
+    }
+
+    public LocalDateTime getFechaCreacion() {
+        return fechaCreacion;
     }
 
     public LocalDateTime getFechaCierre() {
